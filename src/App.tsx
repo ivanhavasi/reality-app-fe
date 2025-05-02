@@ -1,26 +1,26 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import Login from './components/Login';
+import AdminLayout from './components/AdminLayout';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-function App() {
+const AppContent = () => {
+  const { isAuthenticated } = useAuth();
+  
+  return isAuthenticated ? <AdminLayout /> : <Login />;
+};
+
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <GoogleOAuthProvider clientId="825102483513-d84p826mvtddldb1urdg1kv1gsj7tfv4.apps.googleusercontent.com">
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   );
-}
+};
 
 export default App;
