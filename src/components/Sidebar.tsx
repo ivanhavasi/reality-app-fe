@@ -18,6 +18,9 @@ const Sidebar = () => {
         <li className="list-group-item bg-transparent">
           <Link to="/sent-notifications" className="text-decoration-none text-reset">Received Notifications</Link>
         </li>
+        <li className="list-group-item bg-transparent">
+          <Link to="/notifications" className="text-decoration-none text-reset">Notifications</Link>
+        </li>
       </ul>
     </div>
   );

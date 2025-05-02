@@ -1,5 +1,12 @@
 import { tokenService } from './TokenService';
 import { userService } from './UserService';
+import { 
+  Notification, 
+  EmailNotificationCommand, 
+  WebhookNotificationCommand, 
+  DiscordWebhookNotificationCommand,
+  AddNotificationCommand
+} from '../types/notifications';
 
 // Helper function to get authorization headers
 const getAuthHeaders = () => {
@@ -9,12 +16,46 @@ const getAuthHeaders = () => {
   };
 };
 
+// Helper function to handle API errors
+const handleApiError = async (response: Response, defaultMessage: string): Promise<never> => {
+  let errorMessage = defaultMessage;
+  
+  try {
+    // Try to get the error message from the response
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const errorData = await response.json();
+      if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.error) {
+        errorMessage = errorData.error;
+      }
+    } else {
+      const text = await response.text();
+      if (text) {
+        errorMessage = text;
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing error response:', e);
+  }
+  
+  // Add status code to the error message
+  if (response.status >= 400 && response.status < 500) {
+    errorMessage = `Client Error (${response.status}): ${errorMessage}`;
+  } else if (response.status >= 500) {
+    errorMessage = `Server Error (${response.status}): ${errorMessage}`;
+  }
+  
+  throw new Error(errorMessage);
+};
+
 export const fetchProtectedData = async () => {
   const res = await fetch('http://localhost:8080/api/protected', {
     headers: getAuthHeaders(),
   });
 
-  if (!res.ok) throw new Error('API call failed');
+  if (!res.ok) await handleApiError(res, 'API call failed');
   return res.text();
 };
 
@@ -23,7 +64,7 @@ export const getUserInfo = async () => {
     headers: getAuthHeaders(),
   });
 
-  if (!res.ok) throw new Error('Failed to fetch user');
+  if (!res.ok) await handleApiError(res, 'Failed to fetch user');
   const userData = await res.json();
   
   // Store the user ID for later use
@@ -43,7 +84,91 @@ export const fetchNotifications = async (userId: string, limit: number, offset: 
     headers: getAuthHeaders(),
   });
 
-  if (!res.ok) throw new Error('Failed to fetch notifications');
+  if (!res.ok) await handleApiError(res, 'Failed to fetch notifications');
+  return await res.json();
+};
+
+// Get user notifications
+export const getUserNotifications = async (): Promise<Notification[]> => {
+  const userId = userService.getUserId();
+  console.log('Getting notifications for user ID:', userId);
+  
+  if (!userId) throw new Error('User ID not found');
+
+  const url = `http://localhost:8080/api/users/${userId}/notifications`;
+  console.log('Fetching from URL:', url);
+  
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+
+  console.log('API response status:', res.status);
+
+  if (!res.ok) {
+    await handleApiError(res, 'Failed to fetch notifications');
+  }
+
+  const data = await res.json();
+  console.log('Notifications data received:', data);
+  return data;
+};
+
+// Delete a notification
+export const deleteNotification = async (notificationId: string): Promise<void> => {
+  const userId = userService.getUserId();
+  if (!userId) throw new Error('User ID not found');
+
+  const res = await fetch(`http://localhost:8080/api/users/${userId}/notifications/${notificationId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) await handleApiError(res, 'Failed to delete notification');
+};
+
+// Enable a notification
+export const enableNotification = async (notificationId: string): Promise<Notification> => {
+  const userId = userService.getUserId();
+  if (!userId) throw new Error('User ID not found');
+
+  const res = await fetch(`http://localhost:8080/api/users/${userId}/notifications/${notificationId}/enable`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) await handleApiError(res, 'Failed to enable notification');
+  return await res.json();
+};
+
+// Disable a notification
+export const disableNotification = async (notificationId: string): Promise<Notification> => {
+  const userId = userService.getUserId();
+  if (!userId) throw new Error('User ID not found');
+
+  const res = await fetch(`http://localhost:8080/api/users/${userId}/notifications/${notificationId}/disable`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) await handleApiError(res, 'Failed to disable notification');
+  return await res.json();
+};
+
+// Add a new notification
+export const addNotification = async (command: AddNotificationCommand): Promise<Notification> => {
+  const userId = userService.getUserId();
+  if (!userId) throw new Error('User ID not found');
+
+  const res = await fetch(`http://localhost:8080/api/users/${userId}/notifications`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(command),
+  });
+
+  if (!res.ok) await handleApiError(res, 'Failed to add notification');
   return await res.json();
 };
 

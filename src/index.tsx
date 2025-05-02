@@ -5,6 +5,17 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
+// Add custom CSS for toast notifications
+const customStyles = document.createElement('style');
+customStyles.textContent = `
+.toast-container {
+  position: fixed !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+`;
+document.head.appendChild(customStyles);
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );

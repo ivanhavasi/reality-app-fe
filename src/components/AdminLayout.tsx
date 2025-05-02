@@ -3,11 +3,12 @@ import Sidebar from './Sidebar';
 import Dashboard from '../pages/Dashboard';
 import Settings from '../pages/Settings';
 import ReceivedNotifications from '../pages/ReceivedNotifications';
+import Notifications from '../pages/Notifications';
 import { Navbar, Nav, Dropdown } from 'react-bootstrap';
 import { GearFill } from 'react-bootstrap-icons';
 import { useAuth } from '../context/AuthContext';
 
-const AdminLayout = () => {
+const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
   const navigate = useNavigate();
   const { logout, token } = useAuth();
 
@@ -42,12 +43,14 @@ const AdminLayout = () => {
       <div className="d-flex flex-grow-1">
         <Sidebar />
         <div className="flex-grow-1 p-4 bg-body">
-          <Routes>
-            <Route path="/" element={<Dashboard token={token || ''} />} />
-            <Route path="/settings" element={<Settings token={token || ''} />} />
-            <Route path="/sent-notifications" element={<ReceivedNotifications token={token || ''} />} />
-            {/* Add more routes as needed */}
-          </Routes>
+          {children || (
+            <Routes>
+              <Route path="/" element={<Dashboard token={token || ''} />} />
+              <Route path="/settings" element={<Settings token={token || ''} />} />
+              <Route path="/sent-notifications" element={<ReceivedNotifications token={token || ''} />} />
+              <Route path="/notifications" element={<Notifications token={token || ''} />} />
+            </Routes>
+          )}
         </div>
       </div>
     </div>
