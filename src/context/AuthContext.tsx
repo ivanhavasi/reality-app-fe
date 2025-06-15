@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { tokenService } from '../services/TokenService';
 import { getUserInfo } from '../services/api';
+import { useUser } from './UserContext';
 
 interface AuthContextType {
   token: string | null;
@@ -18,6 +19,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(tokenService.getToken());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(tokenService.hasToken());
+  const { setUser } = useUser();
 
   useEffect(() => {
     // Update authentication state when token changes
@@ -30,7 +32,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Fetch user info and store the ID
     try {
-      await getUserInfo();
+      const userInfo = await getUserInfo();
+      setUser(userInfo);
     } catch (error) {
       console.error('Failed to fetch user info after login:', error);
     }
@@ -39,6 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     tokenService.removeToken();
     setToken(null);
+    setUser(null);
   };
 
   const value = {

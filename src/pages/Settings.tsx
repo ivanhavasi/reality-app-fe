@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getUserInfo } from '../services/api';
 import { Button, Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 
 interface SettingsProps {
   token: string;
@@ -16,12 +16,11 @@ interface User {
 }
 
 const Settings = ({ token }: SettingsProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
   const [theme, setTheme] = useState<string>('light');
   const navigate = useNavigate();
 
   useEffect(() => {
-    getUserInfo().then(setUser).catch(console.error);
     const savedTheme = localStorage.getItem('theme') || 'light';
     setTheme(savedTheme);
     document.body.setAttribute('data-bs-theme', savedTheme);

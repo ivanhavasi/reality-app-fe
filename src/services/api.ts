@@ -8,6 +8,9 @@ import {
   AddNotificationCommand
 } from '../types/notifications';
 
+// API base URL from environment variable with fallback to localhost
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080';
+
 // Helper function to get authorization headers
 const getAuthHeaders = () => {
   const token = tokenService.getToken();
@@ -50,17 +53,16 @@ const handleApiError = async (response: Response, defaultMessage: string): Promi
   throw new Error(errorMessage);
 };
 
-export const fetchProtectedData = async () => {
-  const res = await fetch('http://localhost:8080/api/protected', {
-    headers: getAuthHeaders(),
-  });
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  roles: string[];
+  createdAt: Date;
+}
 
-  if (!res.ok) await handleApiError(res, 'API call failed');
-  return res.text();
-};
-
-export const getUserInfo = async () => {
-  const res = await fetch('http://localhost:8080/api/users/me', {
+export const getUserInfo = async (): Promise<User> => {
+  const res = await fetch(`${API_BASE_URL}/api/users/me`, {
     headers: getAuthHeaders(),
   });
 
@@ -76,7 +78,7 @@ export const getUserInfo = async () => {
 };
 
 export const fetchNotifications = async (userId: string, limit: number, offset: number) => {
-  const url = new URL(`http://localhost:8080/api/users/${userId}/notifications/sent`);
+  const url = new URL(`${API_BASE_URL}/api/users/${userId}/notifications/sent`);
   url.searchParams.append('limit', limit.toString());
   url.searchParams.append('offset', offset.toString());
 
@@ -95,7 +97,7 @@ export const getUserNotifications = async (): Promise<Notification[]> => {
   
   if (!userId) throw new Error('User ID not found');
 
-  const url = `http://localhost:8080/api/users/${userId}/notifications`;
+  const url = `${API_BASE_URL}/api/users/${userId}/notifications`;
   console.log('Fetching from URL:', url);
   
   const res = await fetch(url, {
@@ -118,7 +120,7 @@ export const deleteNotification = async (notificationId: string): Promise<void> 
   const userId = userService.getUserId();
   if (!userId) throw new Error('User ID not found');
 
-  const res = await fetch(`http://localhost:8080/api/users/${userId}/notifications/${notificationId}`, {
+  const res = await fetch(`${API_BASE_URL}/api/users/${userId}/notifications/${notificationId}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -131,7 +133,7 @@ export const enableNotification = async (notificationId: string): Promise<Notifi
   const userId = userService.getUserId();
   if (!userId) throw new Error('User ID not found');
 
-  const res = await fetch(`http://localhost:8080/api/users/${userId}/notifications/${notificationId}/enable`, {
+  const res = await fetch(`${API_BASE_URL}/api/users/${userId}/notifications/${notificationId}/enable`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -145,7 +147,7 @@ export const disableNotification = async (notificationId: string): Promise<Notif
   const userId = userService.getUserId();
   if (!userId) throw new Error('User ID not found');
 
-  const res = await fetch(`http://localhost:8080/api/users/${userId}/notifications/${notificationId}/disable`, {
+  const res = await fetch(`${API_BASE_URL}/api/users/${userId}/notifications/${notificationId}/disable`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -159,7 +161,7 @@ export const addNotification = async (command: AddNotificationCommand): Promise<
   const userId = userService.getUserId();
   if (!userId) throw new Error('User ID not found');
 
-  const res = await fetch(`http://localhost:8080/api/users/${userId}/notifications`, {
+  const res = await fetch(`${API_BASE_URL}/api/users/${userId}/notifications`, {
     method: 'POST',
     headers: {
       ...getAuthHeaders(),
@@ -175,7 +177,7 @@ export const addNotification = async (command: AddNotificationCommand): Promise<
 // Backward compatibility function for legacy code
 export const withToken = (token: string) => {
   return {
-    fetchProtectedData: async () => fetchProtectedData(),
+//     fetchProtectedData: async () => fetchProtectedData(),
     getUserInfo: async () => getUserInfo(),
     fetchNotifications: async (userId: string, limit: number, offset: number) => 
       fetchNotifications(userId, limit, offset)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchProtectedData } from '../services/api';
+import { getUserInfo } from '../services/api';
+import { useUser } from '../context/UserContext';
 
 interface Props {
   token: string;
@@ -7,15 +8,25 @@ interface Props {
 
 const Dashboard = ({ token }: Props) => {
   const [data, setData] = useState<string | null>(null);
+  const { isAdmin, user } = useUser();
 
   useEffect(() => {
-    fetchProtectedData().then(setData).catch(console.error);
-  }, [token]);
+    // No need to call getUserInfo here as it's handled in login
+    if (user) {
+      setData(user.username);
+    }
+  }, [user, token]);
 
   return (
     <div>
-      <h2>Welcome to Admin Dashboard</h2>
-      <p>Data from API: {data}</p>
+      <h2>Welcome to {isAdmin ? 'Admin' : 'User'} Dashboard</h2>
+      <p>Hello, {data}</p>
+      {isAdmin && (
+        <div className="admin-section">
+          <h3>Admin Controls</h3>
+          <p>You have administrative privileges</p>
+        </div>
+      )}
     </div>
   );
 };

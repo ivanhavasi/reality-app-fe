@@ -104,7 +104,7 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
               <Card.Body>
                 <Card.Title>{notification.realEstate.name}</Card.Title>
                 <Card.Text>
-                  <strong>Price:</strong> ${notification.realEstate.price.toFixed(2)}
+                  <strong>Price:</strong> {notification.realEstate.price.toFixed(0)} Kč
                 </Card.Text>
                 <Card.Text>
                   <strong>City:</strong> {notification.realEstate.city}
