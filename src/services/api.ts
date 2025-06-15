@@ -1,18 +1,15 @@
 import { tokenService } from './TokenService';
 import { userService } from './UserService';
 import { 
-  Notification, 
-  EmailNotificationCommand, 
-  WebhookNotificationCommand, 
-  DiscordWebhookNotificationCommand,
+  Notification,
   AddNotificationCommand
 } from '../types/notifications';
 
 // API base URL from environment variable with fallback to localhost
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080';
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
 // Helper function to get authorization headers
-const getAuthHeaders = () => {
+export const getAuthHeaders = () => {
   const token = tokenService.getToken();
   return {
     Authorization: `Bearer ${token}`,
@@ -20,7 +17,7 @@ const getAuthHeaders = () => {
 };
 
 // Helper function to handle API errors
-const handleApiError = async (response: Response, defaultMessage: string): Promise<never> => {
+export const handleApiError = async (response: Response, defaultMessage: string): Promise<never> => {
   let errorMessage = defaultMessage;
   
   try {

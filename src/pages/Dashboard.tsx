@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { getUserInfo } from '../services/api';
 import { useUser } from '../context/UserContext';
 
 interface Props {

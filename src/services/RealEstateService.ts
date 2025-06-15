@@ -1,50 +1,5 @@
-import {tokenService} from './TokenService';
 import {RealEstate} from '../types/realEstate';
-
-// API base URL from environment variable with fallback to localhost
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080';
-
-// Helper function to get authorization headers
-const getAuthHeaders = () => {
-  const token = tokenService.getToken();
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-};
-
-// Helper function to handle API errors
-const handleApiError = async (response: Response, defaultMessage: string): Promise<never> => {
-  let errorMessage = defaultMessage;
-
-  try {
-    // Try to get the error message from the response
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const errorData = await response.json();
-      if (errorData.message) {
-        errorMessage = errorData.message;
-      } else if (errorData.error) {
-        errorMessage = errorData.error;
-      }
-    } else {
-      const text = await response.text();
-      if (text) {
-        errorMessage = text;
-      }
-    }
-  } catch (e) {
-    console.error('Error parsing error response:', e);
-  }
-
-  // Add status code to the error message
-  if (response.status >= 400 && response.status < 500) {
-    errorMessage = `Client Error (${response.status}): ${errorMessage}`;
-  } else if (response.status >= 500) {
-    errorMessage = `Server Error (${response.status}): ${errorMessage}`;
-  }
-
-  throw new Error(errorMessage);
-};
+import {API_BASE_URL, getAuthHeaders, handleApiError} from "./api";
 
 export type SortDirection = 'ASC' | 'DESC';
 
@@ -83,7 +38,6 @@ export const fetchRealEstates = async (
     return [];
   }
 };
-
 
 export const realEstateService = {
   fetchRealEstates
