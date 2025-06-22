@@ -47,15 +47,13 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-        working-directory: ./reality-app-fe
 
       - name: Build React App
-        run: npm run build
-        working-directory: ./reality-app-fe
+        run: CI='' npm run build
 
       - name: Build, Tag, and Push Docker Image
         run: |
-          docker build -t reality-app-fe:${{ env.commit_hash }} ./reality-app-fe
+          docker build -t reality-app-fe:${{ env.commit_hash }} .
           docker tag reality-app-fe:${{ env.commit_hash }} ${{ secrets.ECR_REPOSITORY_FRONTEND }}:${{ env.commit_hash }}
           docker push ${{ secrets.ECR_REPOSITORY_FRONTEND }}:${{ env.commit_hash }}
 
@@ -68,6 +66,6 @@ jobs:
       EC2_USER: ${{ secrets.EC2_USER }}
       EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      ECR_REPOSITORY_FRONTEND: ${{ secrets.ECR_REPOSITORY_FRONTEND }}
     with:
       commit_hash: ${{ needs.build-and-push-react.outputs.commit_hash }}

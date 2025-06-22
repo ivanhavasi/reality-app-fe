@@ -20,7 +20,7 @@ on:
       AWS_REGION:
         description: 'AWS region'
         required: true
-      ECR_REPOSITORY:
+      ECR_REPOSITORY_FRONTEND:
         description: 'ECR repository URL'
         required: true
 
@@ -43,15 +43,15 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             # Login to Amazon ECR
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY_FRONTEND }}
 
             # Pull the Docker image tagged with the commit hash
-            docker pull ${{ secrets.ECR_REPOSITORY }}:${{ inputs.commit_hash }}
+            docker pull ${{ secrets.ECR_REPOSITORY_FRONTEND }}:${{ inputs.commit_hash }}
 
             # Stop and remove the old react-app container if running
             docker stop reality-app-fe || true
             docker rm reality-app-fe || true
 
             # Run the new container
-            docker run -d --name reality-app-fe -p 80:80 \
-              ${{ secrets.ECR_REPOSITORY }}:${{ inputs.commit_hash }}
+            docker run -d --name reality-app-fe -p 3000:3000 \
+              ${{ secrets.ECR_REPOSITORY_FRONTEND }}:${{ inputs.commit_hash }}
