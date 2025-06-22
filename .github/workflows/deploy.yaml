@@ -1,0 +1,57 @@
+name: Deploy React App to EC2
+
+on:
+  workflow_call:
+    inputs:
+      commit_hash:
+        description: 'Commit hash for the Docker image to deploy'
+        required: true
+        type: string
+    secrets:
+      EC2_HOST:
+        description: 'EC2 Host address'
+        required: true
+      EC2_USER:
+        description: 'EC2 SSH user'
+        required: true
+      EC2_SSH_KEY:
+        description: 'EC2 SSH private key'
+        required: true
+      AWS_REGION:
+        description: 'AWS region'
+        required: true
+      ECR_REPOSITORY:
+        description: 'ECR repository URL'
+        required: true
+
+jobs:
+  deploy-to-ec2-react:
+    name: Deploy React App on EC2 with Specific Commit Hash
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Note Commit Hash
+        run: |
+          echo "::notice title=Applied Commit Hash::${{ inputs.commit_hash }}"
+        shell: bash
+
+      - name: SSH into EC2 and Deploy React Container
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Login to Amazon ECR
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
+
+            # Pull the Docker image tagged with the commit hash
+            docker pull ${{ secrets.ECR_REPOSITORY }}:${{ inputs.commit_hash }}
+
+            # Stop and remove the old react-app container if running
+            docker stop reality-app-fe || true
+            docker rm reality-app-fe || true
+
+            # Run the new container
+            docker run -d --name reality-app-fe -p 80:80 \
+              ${{ secrets.ECR_REPOSITORY }}:${{ inputs.commit_hash }}

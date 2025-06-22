@@ -1,0 +1,73 @@
+name: CI/CD React App to AWS ECR and EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push-react:
+    name: Build React Docker Image and Push to ECR
+    runs-on: ubuntu-latest
+    outputs:
+      commit_hash: ${{ steps.output_commit_hash.outputs.commit_hash }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY_FRONTEND }}
+
+      - name: Output Commit Hash
+        id: output_commit_hash
+        run: echo "commit_hash=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Get Commit Hash
+        id: get_commit_hash
+        run: echo "commit_hash=${GITHUB_SHA}" >> $GITHUB_ENV
+
+      - name: Note Commit Hash
+        run: |
+          echo "::notice title=Commit Hash::${{ env.commit_hash }}"
+        shell: bash
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+        working-directory: ./reality-app-fe
+
+      - name: Build React App
+        run: npm run build
+        working-directory: ./reality-app-fe
+
+      - name: Build, Tag, and Push Docker Image
+        run: |
+          docker build -t reality-app-fe:${{ env.commit_hash }} ./reality-app-fe
+          docker tag reality-app-fe:${{ env.commit_hash }} ${{ secrets.ECR_REPOSITORY_FRONTEND }}:${{ env.commit_hash }}
+          docker push ${{ secrets.ECR_REPOSITORY_FRONTEND }}:${{ env.commit_hash }}
+
+  deploy-to-ec2-react:
+    name: Deploy React to EC2
+    needs: build-and-push-react
+    uses: ivanhavasi/reality-app-fe/.github/workflows/deploy.yaml@main
+    secrets:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+    with:
+      commit_hash: ${{ needs.build-and-push-react.outputs.commit_hash }}
