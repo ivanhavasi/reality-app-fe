@@ -236,51 +236,55 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
 
   return (
     <Container fluid className="p-0">
-      <Row className="mb-4">
+      <Row className="mb-3 mb-md-4">
         <Col>
-          <h1>Real Estates</h1>
-          <p className="text-muted">Browse available real estates</p>
+          <h1 className="fs-3 fs-md-1">Real Estates</h1>
+          <p className="text-muted d-none d-md-block">Browse available real estates</p>
         </Col>
         <Col xs="auto" className="d-flex align-items-center">
-          <Form.Group controlId="sortDirection" className="me-2">
-            <Form.Select 
-              value={sortDirection} 
-              onChange={handleSortDirectionChange}
-              size="sm"
-            >
-              <option value="DESC">Newest first</option>
-              <option value="ASC">Oldest first</option>
-            </Form.Select>
-          </Form.Group>
-          <Form.Group controlId="transactionType">
-            <Form.Select
-              value={transactionType}
-              onChange={handleTransactionTypeChange}
-              size="sm"
-            >
-              <option value="SALE">For Sale</option>
-              <option value="RENT">For Rent</option>
-            </Form.Select>
-          </Form.Group>
+          <div className="d-flex flex-column flex-md-row gap-2">
+            <Form.Group controlId="sortDirection">
+              <Form.Select
+                value={sortDirection}
+                onChange={handleSortDirectionChange}
+                size="sm"
+                className="text-nowrap"
+              >
+                <option value="DESC">Newest first</option>
+                <option value="ASC">Oldest first</option>
+              </Form.Select>
+            </Form.Group>
+            <Form.Group controlId="transactionType">
+              <Form.Select
+                value={transactionType}
+                onChange={handleTransactionTypeChange}
+                size="sm"
+                className="text-nowrap"
+              >
+                <option value="SALE">For Sale</option>
+                <option value="RENT">For Rent</option>
+              </Form.Select>
+            </Form.Group>
+          </div>
         </Col>
       </Row>
 
-      <Row className="mb-4">
-        <Col md={6} lg={4} className="mx-auto">
+      <Row className="mb-3 mb-md-4">
+        <Col lg={6} xl={4} className="mx-auto">
           <Form.Group controlId="searchRealEstates">
             <div className="position-relative">
               <Form.Control
                 type="text"
-                placeholder="Search real estates by name, address or description..."
+                placeholder="Search real estates..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="shadow-sm"
+                size="sm"
               />
               {searchTerm && (
                 <Button 
                   variant="link" 
-                  className="position-absolute end-0 top-0 text-secondary" 
-                  style={{ padding: '0.375rem 0.75rem' }}
+                  className="position-absolute end-0 top-0 text-secondary p-2"
                   onClick={() => {
                     setSearchTerm('');
                     // Clear search parameter from URL
@@ -320,20 +324,28 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
         </div>
       ) : (
         <>
-                      <Row xs={1} md={2} lg={3} xl={3} className="g-4 mb-4 mx-0">
+          <Row xs={1} sm={2} lg={3} xl={4} className="g-3 g-md-4 mb-4 mx-0">
             {realEstates.map((estate: RealEstate) => (
               <Col key={estate.id}>
                 <Card 
                   className="h-100 shadow-sm" 
                   onClick={() => navigate(`/real-estates/${estate.id}`)}
-                  style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
-                  onMouseOver={(e) => { 
-                    e.currentTarget.style.transform = 'translateY(-5px)'; 
-                    e.currentTarget.style.boxShadow = '0 .5rem 1rem rgba(0,0,0,.15)'; 
+                  style={{
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    minHeight: '350px'
+                  }}
+                  onMouseOver={(e) => {
+                    if (window.innerWidth > 768) {
+                      e.currentTarget.style.transform = 'translateY(-5px)';
+                      e.currentTarget.style.boxShadow = '0 .5rem 1rem rgba(0,0,0,.15)';
+                    }
                   }}
                   onMouseOut={(e) => { 
-                    e.currentTarget.style.transform = 'translateY(0)'; 
-                    e.currentTarget.style.boxShadow = '0 .125rem .25rem rgba(0,0,0,.075)'; 
+                    if (window.innerWidth > 768) {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 .125rem .25rem rgba(0,0,0,.075)';
+                    }
                   }}
                 >
                   {estate.images && estate.images.length > 0 && (
@@ -341,41 +353,41 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
                       variant="top" 
                       src={estate.images[0]} 
                       alt={estate.name}
-                      style={{ height: '200px', objectFit: 'cover' }}
+                      style={{ height: '160px', objectFit: 'cover' }}
                     />
                   )}
-                  <Card.Body>
-                    <Card.Title>{estate.name}</Card.Title>
+                  <Card.Body className="d-flex flex-column">
+                    <Card.Title className="fs-6 line-clamp-2">{estate.name}</Card.Title>
                     <Card.Subtitle className="mb-2">
                       {getLowestPrice(estate) < estate.price ? (
-                        <>
-                          <span className="text-decoration-line-through text-muted">
+                        <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-1">
+                          <span className="text-decoration-line-through text-muted small">
                             {formatCurrency(estate.price, estate.currency)}
                           </span>
-                          <span className="ms-2 text-danger">
+                          <span className="text-danger fw-bold">
                             {formatCurrency(getLowestPrice(estate), estate.currency)}
                           </span>
-                        </>
+                        </div>
                       ) : (
-                        <span className="text-muted">
+                        <span className="text-muted fw-bold">
                           {formatCurrency(estate.price, estate.currency)}
                         </span>
                       )}
                     </Card.Subtitle>
                     <div className="d-flex justify-content-between mb-2 text-muted small">
                       <span>{estate.sizeInM2} m²</span>
-                      <span>{estate.subCategory}</span>
+                      <span className="text-end">{estate.subCategory}</span>
                     </div>
                     {estate.locality && (
-                      <Card.Text className="text-muted small mb-2">
+                      <Card.Text className="text-muted small mb-2 line-clamp-2">
                         {estate.locality.street && `${estate.locality.street}, `}
                         {estate.locality.district && `${estate.locality.district}, `}
                         {estate.locality.city}
                       </Card.Text>
                     )}
-                    <div className="mt-2 d-flex justify-content-between">
-                      <Badge bg="secondary">{estate.provider}</Badge>
-                      <div>
+                    <div className="mt-auto d-flex justify-content-between align-items-end flex-wrap gap-2">
+                      <Badge bg="secondary" className="small">{estate.provider}</Badge>
+                      <div className="d-flex flex-wrap gap-1">
                         {getLowestPrice(estate) < estate.price && (
                           <OverlayTrigger
                             placement="top"
@@ -385,13 +397,15 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
                               </Tooltip>
                             }
                           >
-                            <Badge bg="danger" className="me-1">
+                            <Badge bg="danger" className="small">
                               Save {Math.round((1 - getLowestPrice(estate) / estate.price) * 100)}%
                             </Badge>
                           </OverlayTrigger>
                         )}
                         {estate.duplicates.length > 0 && (
-                          <Badge bg="info">{estate.duplicates.length} duplicate{estate.duplicates.length > 1 ? 's' : ''}</Badge>
+                          <Badge bg="info" className="small">
+                            {estate.duplicates.length} duplicate{estate.duplicates.length > 1 ? 's' : ''}
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -401,8 +415,8 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
             ))}
           </Row>
 
-                      <Row className="mt-4">
-            <Col md={4} className="text-md-start text-center mb-3 mb-md-0">
+          <Row className="mt-3 mt-md-4">
+            <Col xs={12} md={4} className="text-center text-md-start mb-3 mb-md-0">
               <div className="text-muted small">
                 {realEstates.length > 0 ? (
                   <>Showing {(currentPage - 1) * itemsPerPage + 1} - {(currentPage - 1) * itemsPerPage + realEstates.length} results
@@ -412,10 +426,10 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
                 )}
               </div>
             </Col>
-            <Col md={4} className="d-flex justify-content-center">
+            <Col xs={12} md={4} className="d-flex justify-content-center">
               {(paginationItems.length > 1) && (
-                <Pagination className="flex-wrap justify-content-center">
-                  <Pagination.First 
+                <Pagination className="flex-wrap justify-content-center" size="sm">
+                  <Pagination.First
                     onClick={() => handlePageChange(1)} 
                     disabled={currentPage === 1} 
                   />

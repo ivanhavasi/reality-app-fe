@@ -197,13 +197,14 @@ const Notifications: React.FC<NotificationsProps> = () => {
   if (loading) return <div className="d-flex justify-content-center mt-5"><div className="spinner-border" role="status"></div></div>;
 
   return (
-    <div className="container mt-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>My Notifications</h2>
+    <div className="container-fluid px-2 px-md-4 mt-3 mt-md-4">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-3">
+        <h2 className="fs-4 fs-md-2 mb-0">My Notifications</h2>
         <Button
           variant="primary"
           onClick={() => setShowAddModal(true)}
           className="d-flex align-items-center gap-2"
+          size="sm"
         >
           <PlusCircle /> Add Notification
         </Button>
@@ -214,37 +215,37 @@ const Notifications: React.FC<NotificationsProps> = () => {
           You don't have any notifications set up yet.
         </div>
       ) : (
-        <div className="row">
+        <div className="row g-3 g-md-4">
           {notifications.map(notification => (
-            <div key={notification.id} className="col-md-6 mb-3">
-              <Card>
-                <Card.Header className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">{notification.name}</h5>
-                  <Badge bg={notification.enabled ? 'success' : 'secondary'}>
+            <div key={notification.id} className="col-12 col-lg-6 col-xl-4">
+              <Card className="h-100">
+                <Card.Header className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+                  <h5 className="mb-0 fs-6 text-truncate">{notification.name}</h5>
+                  <Badge bg={notification.enabled ? 'success' : 'secondary'} className="flex-shrink-0">
                     {notification.enabled ? 'Enabled' : 'Disabled'}
                   </Badge>
                 </Card.Header>
-                <Card.Body>
+                <Card.Body className="d-flex flex-column">
                   <div className="mb-2">
-                    <strong>Type:</strong> {notification.type}
+                    <strong>Type:</strong> <span className="text-muted">{notification.type}</span>
                   </div>
                   {getTypeSpecificInfo(notification)}
                   {renderFilter(notification)}
                   <div className="mt-3">
                     <small className="text-muted">
-                      <div><strong>Created:</strong> {new Date(notification.createdAt).toLocaleString()}</div>
-                      <div><strong>Updated:</strong> {new Date(notification.updatedAt).toLocaleString()}</div>
+                      <div><strong>Created:</strong> {new Date(notification.createdAt).toLocaleDateString()}</div>
+                      <div><strong>Updated:</strong> {new Date(notification.updatedAt).toLocaleDateString()}</div>
                     </small>
                   </div>
-                  <div className="mt-3 d-flex justify-content-end">
-                    <ButtonGroup>
-                      <Button 
+                  <div className="mt-auto pt-3 d-flex justify-content-end">
+                    <ButtonGroup size="sm">
+                      <Button
                         variant="outline-secondary"
-                        size="sm" 
                         onClick={() => handleToggleEnable(notification)}
                         disabled={actionLoading[notification.id] === 'enable' || actionLoading[notification.id] === 'disable'}
                         title={notification.enabled ? "Disable notification" : "Enable notification"}
-                        className="d-flex align-items-center"
+                        className="d-flex align-items-center justify-content-center"
+                        style={{ minWidth: '40px' }}
                       >
                         {actionLoading[notification.id] === 'enable' || actionLoading[notification.id] === 'disable' ? (
                           <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -256,11 +257,11 @@ const Notifications: React.FC<NotificationsProps> = () => {
                       </Button>
                       <Button 
                         variant="outline-danger" 
-                        size="sm" 
                         onClick={() => handleDelete(notification.id)}
                         disabled={actionLoading[notification.id] === 'delete'}
                         title="Delete notification"
-                        className="d-flex align-items-center"
+                        className="d-flex align-items-center justify-content-center"
+                        style={{ minWidth: '40px' }}
                       >
                         {actionLoading[notification.id] === 'delete' ? (
                           <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -281,11 +282,12 @@ const Notifications: React.FC<NotificationsProps> = () => {
         show={showAddModal} 
         onHide={() => setShowAddModal(false)}
         size="lg"
+        fullscreen="md-down"
       >
         <Modal.Header closeButton>
           <Modal.Title>Add Notification</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-2 p-md-3">
           <AddNotification onSuccess={onNotificationAdded} onCancel={() => setShowAddModal(false)} />
         </Modal.Body>
       </Modal>

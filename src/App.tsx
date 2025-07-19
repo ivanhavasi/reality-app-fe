@@ -6,6 +6,7 @@ import AdminLayout from './components/AdminLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { UserProvider } from './context/UserContext';
 import { RealEstateProvider } from './context/RealEstateContext';
+import './mobile-improvements.css';
 
 const AppContent = () => {
   const { isAuthenticated } = useAuth();

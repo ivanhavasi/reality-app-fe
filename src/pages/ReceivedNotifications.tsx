@@ -86,36 +86,59 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
   };
 
   return (
-    <Container>
-      <h1 className="text-center my-4">Sent Notifications</h1>
-      <Row>
+    <Container fluid className="px-2 px-md-4">
+      <h1 className="text-center my-3 my-md-4 fs-4 fs-md-1">Sent Notifications</h1>
+      <Row className="g-3 g-md-4">
         {notifications.map((notification) => (
-          <Col key={notification.notificationId} xs={12} sm={6} md={4} lg={3} className="mb-4">
+          <Col key={notification.notificationId} xs={12} sm={6} lg={4} xl={3}>
             <Card
-              style={{ cursor: 'pointer' }}
+              className="h-100 shadow-sm"
+              style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
               onClick={() => window.location.href = notification.realEstate.url}
+              onMouseOver={(e) => {
+                if (window.innerWidth > 768) {
+                  e.currentTarget.style.transform = 'translateY(-5px)';
+                  e.currentTarget.style.boxShadow = '0 .5rem 1rem rgba(0,0,0,.15)';
+                }
+              }}
+              onMouseOut={(e) => {
+                if (window.innerWidth > 768) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 .125rem .25rem rgba(0,0,0,.075)';
+                }
+              }}
             >
               <Card.Img
                 variant="top"
                 src={notification.realEstate.image || defaultImage}
                 alt={notification.realEstate.name}
-                style={{ height: '200px', objectFit: 'cover' }}
+                style={{ height: '160px', objectFit: 'cover' }}
               />
-              <Card.Body>
-                <Card.Title>{notification.realEstate.name}</Card.Title>
-                <Card.Text>
-                  <strong>Price:</strong> {notification.realEstate.price.toFixed(0)} Kč
+              <Card.Body className="d-flex flex-column">
+                <Card.Title className="fs-6 line-clamp-2">{notification.realEstate.name}</Card.Title>
+                <Card.Text className="mb-2">
+                  <strong>Price:</strong> <span className="text-success fw-bold">{notification.realEstate.price.toFixed(0)} Kč</span>
                 </Card.Text>
-                <Card.Text>
-                  <strong>City:</strong> {notification.realEstate.city}
+                <Card.Text className="mb-2">
+                  <strong>City:</strong> <span className="text-muted">{notification.realEstate.city}</span>
                 </Card.Text>
-                <Card.Text>
-                  <strong>Notification Type:</strong> {notification.type}
+                <Card.Text className="mb-2">
+                  <strong>Type:</strong> <span className="text-muted">{notification.type}</span>
                 </Card.Text>
-                <Card.Text>
-                  <small className="text-muted">Sent At: {new Date(notification.sentAt).toLocaleString()}</small>
+                <Card.Text className="mb-3">
+                  <small className="text-muted">
+                    Sent: {new Date(notification.sentAt).toLocaleDateString()}
+                  </small>
                 </Card.Text>
-                <Button variant="primary" onClick={() => window.location.href = notification.realEstate.url}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="mt-auto"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(notification.realEstate.url, '_blank');
+                  }}
+                >
                   View Details
                 </Button>
               </Card.Body>
@@ -123,28 +146,41 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
           </Col>
         ))}
       </Row>
+
       {loading && (
         <div className="text-center my-4">
           <Spinner animation="border" variant="primary" />
+          <div className="mt-2 text-muted">Loading notifications...</div>
         </div>
       )}
 
-      <Pagination className="d-flex justify-content-center my-4">
-        <Pagination.Prev
-          disabled={currentPage === 1 || loading}
-          onClick={handlePreviousPage}
-        />
-        <Pagination.Item active>{currentPage}</Pagination.Item>
-        <Pagination.Next
-          disabled={loading}
-          onClick={handleNextPage}
-        />
-      </Pagination>
-      
+      <div className="d-flex justify-content-center my-4">
+        <Pagination size="sm" className="flex-wrap">
+          <Pagination.Prev
+            disabled={currentPage === 1 || loading}
+            onClick={handlePreviousPage}
+          >
+            <span className="d-none d-sm-inline">Previous</span>
+            <span className="d-sm-none">‹</span>
+          </Pagination.Prev>
+          <Pagination.Item active>{currentPage}</Pagination.Item>
+          <Pagination.Next
+            disabled={loading}
+            onClick={handleNextPage}
+          >
+            <span className="d-none d-sm-inline">Next</span>
+            <span className="d-sm-none">›</span>
+          </Pagination.Next>
+        </Pagination>
+      </div>
+
       {/* Only show this message if we've fetched at least once and got no results */}
       {!loading && notifications.length === 0 && (
-        <div className="text-center my-4">
-          <p>No notifications found.</p>
+        <div className="text-center my-5">
+          <div className="alert alert-info d-inline-block">
+            <h5>No notifications found</h5>
+            <p className="mb-0">You haven't received any notifications yet.</p>
+          </div>
         </div>
       )}
     </Container>
