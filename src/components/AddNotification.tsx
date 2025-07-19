@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Form, Button, Row, Col } from 'react-bootstrap';
-import { 
+import { Form, Button, Row, Col, Modal, Card, Alert, Badge } from 'react-bootstrap';
+import {
   NotificationFilter, 
   EmailNotificationCommand, 
   WebhookNotificationCommand, 
@@ -137,183 +137,275 @@ const AddNotification: React.FC<AddNotificationProps> = ({ onSuccess, onCancel }
   };
 
   return (
-    <Form onSubmit={handleSubmit}>
-      <Row>
-        <Col md={6}>
-          <h5 className="mb-3">Notification Details</h5>
-          <Form.Group className="mb-3">
-            <Form.Label>Name</Form.Label>
-            <Form.Control 
-              type="text" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              placeholder="Notification name"
-              required
-            />
-          </Form.Group>
-          
-          <Form.Group className="mb-3">
-            <Form.Label>Type</Form.Label>
-            <Form.Select value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="email">Email</option>
-              <option value="api">Webhook</option>
-              <option value="discord">Discord</option>
-            </Form.Select>
-          </Form.Group>
-          
-          {type === 'email' && (
-            <Form.Group className="mb-3">
-              <Form.Label>Email</Form.Label>
-              <Form.Control 
-                type="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                placeholder="Email address"
-                required
-              />
-            </Form.Group>
-          )}
-          
-          {type === 'api' && (
-            <Form.Group className="mb-3">
-              <Form.Label>Webhook URL</Form.Label>
-              <Form.Control 
-                type="url" 
-                value={url} 
-                onChange={(e) => setUrl(e.target.value)} 
-                placeholder="https://example.com/webhook"
-                required
-              />
-            </Form.Group>
-          )}
-          
-          {type === 'discord' && (
-            <>
-              <Form.Group className="mb-3">
-                <Form.Label>Webhook ID</Form.Label>
-                <Form.Control 
-                  type="text" 
-                  value={webhookId} 
-                  onChange={(e) => setWebhookId(e.target.value)} 
-                  placeholder="Discord webhook ID"
-                  required
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Token</Form.Label>
-                <Form.Control 
-                  type="password" 
-                  value={token} 
-                  onChange={(e) => setToken(e.target.value)} 
-                  placeholder="Discord webhook token"
-                  required
-                />
-              </Form.Group>
-            </>
-          )}
-        </Col>
-        
-        <Col md={6}>
-          <h5 className="mb-3">Filter Settings</h5>
-          <Form.Group className="mb-3">
-            <Form.Label>Building Type</Form.Label>
-            <Form.Select 
-              value={buildingType} 
-              onChange={(e) => setBuildingType(e.target.value as BuildingType)}
-            >
-              {Object.values(BuildingType).map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-          
-          <Form.Group className="mb-3">
-            <Form.Label>Transaction Type</Form.Label>
-            <Form.Select 
-              value={transactionType} 
-              onChange={(e) => setTransactionType(e.target.value as TransactionType)}
-            >
-              {Object.values(TransactionType).map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-          
+    <>
+      <Modal.Header closeButton className="border-0 pb-0">
+        <Modal.Title className="d-flex align-items-center">
+          <div className="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style={{width: '50px', height: '50px'}}>
+            <i className="fas fa-bell-plus text-primary"></i>
+          </div>
+          <div>
+            <h4 className="mb-0">Create New Notification</h4>
+            <small className="text-muted">Set up alerts for new property listings</small>
+          </div>
+        </Modal.Title>
+      </Modal.Header>
+
+      <Modal.Body className="pt-3">
+        <Form onSubmit={handleSubmit}>
           <Row>
-            <Col>
-              <Form.Group className="mb-3">
-                <Form.Label>Size From (m²)</Form.Label>
-                <Form.Control 
-                  type="number" 
-                  value={sizeFrom} 
-                  onChange={(e) => setSizeFrom(e.target.value)} 
-                  placeholder="Min size"
-                  min="0"
-                />
-              </Form.Group>
+            <Col lg={6}>
+              <Card className="modern-card border-0 mb-4" style={{backgroundColor: 'var(--bs-body-bg)'}}>
+                <Card.Header className="bg-transparent border-0 pb-2">
+                  <h6 className="mb-0 fw-bold text-primary">
+                    <i className="fas fa-cog me-2"></i>
+                    Notification Settings
+                  </h6>
+                </Card.Header>
+                <Card.Body className="pt-2">
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-medium">Notification Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g., Prague Apartments Alert"
+                      className="modern-search"
+                      required
+                    />
+                    <Form.Text className="text-muted">
+                      Give your notification a descriptive name
+                    </Form.Text>
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-medium">Notification Type</Form.Label>
+                    <Form.Select
+                      value={type}
+                      onChange={(e) => setType(e.target.value)}
+                      className="modern-search"
+                    >
+                      <option value="email">📧 Email Notification</option>
+                      <option value="api">🔗 Webhook (API)</option>
+                      <option value="discord">💬 Discord</option>
+                    </Form.Select>
+                  </Form.Group>
+
+                  {type === 'email' && (
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-medium">Email Address</Form.Label>
+                      <Form.Control
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="your.email@example.com"
+                        className="modern-search"
+                        required
+                      />
+                      <Form.Text className="text-muted">
+                        We'll send new property alerts to this email
+                      </Form.Text>
+                    </Form.Group>
+                  )}
+
+                  {type === 'api' && (
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-medium">Webhook URL</Form.Label>
+                      <Form.Control
+                        type="url"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        placeholder="https://your-app.com/webhook"
+                        className="modern-search"
+                        required
+                      />
+                      <Form.Text className="text-muted">
+                        HTTP endpoint to receive property notifications
+                      </Form.Text>
+                    </Form.Group>
+                  )}
+
+                  {type === 'discord' && (
+                    <>
+                      <Form.Group className="mb-3">
+                        <Form.Label className="fw-medium">Discord Webhook ID</Form.Label>
+                        <Form.Control
+                          type="text"
+                          value={webhookId}
+                          onChange={(e) => setWebhookId(e.target.value)}
+                          placeholder="Discord webhook ID"
+                          className="modern-search"
+                          required
+                        />
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                        <Form.Label className="fw-medium">Discord Token</Form.Label>
+                        <Form.Control
+                          type="password"
+                          value={token}
+                          onChange={(e) => setToken(e.target.value)}
+                          placeholder="Discord webhook token"
+                          className="modern-search"
+                          required
+                        />
+                        <Form.Text className="text-muted">
+                          Your Discord webhook credentials
+                        </Form.Text>
+                      </Form.Group>
+                    </>
+                  )}
+                </Card.Body>
+              </Card>
             </Col>
-            <Col>
-              <Form.Group className="mb-3">
-                <Form.Label>Size To (m²)</Form.Label>
-                <Form.Control 
-                  type="number" 
-                  value={sizeTo} 
-                  onChange={(e) => setSizeTo(e.target.value)} 
-                  placeholder="Max size"
-                  min="0"
-                />
-              </Form.Group>
+
+            <Col lg={6}>
+              <Card className="modern-card border-0 mb-4" style={{backgroundColor: 'var(--bs-body-bg)'}}>
+                <Card.Header className="bg-transparent border-0 pb-2">
+                  <h6 className="mb-0 fw-bold text-primary">
+                    <i className="fas fa-filter me-2"></i>
+                    Property Filters
+                  </h6>
+                </Card.Header>
+                <Card.Body className="pt-2">
+                  <Row>
+                    <Col sm={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label className="fw-medium">Building Type</Form.Label>
+                        <Form.Select
+                          value={buildingType}
+                          onChange={(e) => setBuildingType(e.target.value as BuildingType)}
+                          className="modern-search"
+                        >
+                          <option value={BuildingType.APARTMENT}>🏠 Apartment</option>
+                          <option value={BuildingType.HOUSE}>🏘️ House</option>
+                          <option value={BuildingType.COMMERCIAL}>🏢 Commercial</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                    <Col sm={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label className="fw-medium">Transaction Type</Form.Label>
+                        <Form.Select
+                          value={transactionType}
+                          onChange={(e) => setTransactionType(e.target.value as TransactionType)}
+                          className="modern-search"
+                        >
+                          <option value={TransactionType.SALE}>💰 For Sale</option>
+                          <option value={TransactionType.RENT}>🏠 For Rent</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-medium">Size Range (m²)</Form.Label>
+                    <Row>
+                      <Col sm={6}>
+                        <Form.Control
+                          type="number"
+                          value={sizeFrom}
+                          onChange={(e) => setSizeFrom(e.target.value)}
+                          placeholder="Min size"
+                          className="modern-search"
+                          min="0"
+                        />
+                      </Col>
+                      <Col sm={6}>
+                        <Form.Control
+                          type="number"
+                          value={sizeTo}
+                          onChange={(e) => setSizeTo(e.target.value)}
+                          placeholder="Max size"
+                          className="modern-search"
+                          min="0"
+                        />
+                      </Col>
+                    </Row>
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-medium">Price Range (CZK)</Form.Label>
+                    <Row>
+                      <Col sm={6}>
+                        <Form.Control
+                          type="number"
+                          value={priceFrom}
+                          onChange={(e) => setPriceFrom(e.target.value)}
+                          placeholder="Min price"
+                          className="modern-search"
+                          min="0"
+                        />
+                      </Col>
+                      <Col sm={6}>
+                        <Form.Control
+                          type="number"
+                          value={priceTo}
+                          onChange={(e) => setPriceTo(e.target.value)}
+                          placeholder="Max price"
+                          className="modern-search"
+                          min="0"
+                        />
+                      </Col>
+                    </Row>
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-medium">Property Subtypes</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={subTypes}
+                      onChange={(e) => setSubTypes(e.target.value)}
+                      placeholder="e.g., 2+1, 3+1, penthouse"
+                      className="modern-search"
+                    />
+                    <Form.Text className="text-muted">
+                      Comma-separated list of property subtypes
+                    </Form.Text>
+                  </Form.Group>
+                </Card.Body>
+              </Card>
             </Col>
           </Row>
-          
-          <Row>
-            <Col>
-              <Form.Group className="mb-3">
-                <Form.Label>Price From</Form.Label>
-                <Form.Control 
-                  type="number" 
-                  value={priceFrom} 
-                  onChange={(e) => setPriceFrom(e.target.value)} 
-                  placeholder="Min price"
-                  min="0"
-                />
-              </Form.Group>
-            </Col>
-            <Col>
-              <Form.Group className="mb-3">
-                <Form.Label>Price To</Form.Label>
-                <Form.Control 
-                  type="number" 
-                  value={priceTo} 
-                  onChange={(e) => setPriceTo(e.target.value)} 
-                  placeholder="Max price"
-                  min="0"
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-          
-          <Form.Group className="mb-3">
-            <Form.Label>Sub Types (comma separated)</Form.Label>
-            <Form.Control 
-              type="text" 
-              value={subTypes} 
-              onChange={(e) => setSubTypes(e.target.value)} 
-              placeholder="type1, type2, type3"
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-      
-      <div className="d-flex justify-content-end gap-2 mt-3">
-        <Button variant="secondary" onClick={onCancel} disabled={loading}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Adding...' : 'Add Notification'}
-        </Button>
-      </div>
-    </Form>
+
+          <Alert variant="info" className="d-flex align-items-center">
+            <i className="fas fa-info-circle me-2"></i>
+            <div>
+              <strong>How it works:</strong> You'll receive notifications when new properties matching your criteria are found in Prague region.
+            </div>
+          </Alert>
+        </Form>
+      </Modal.Body>
+
+      <Modal.Footer className="border-0 pt-0">
+        <div className="d-flex justify-content-between w-100">
+          <Button
+            variant="outline-secondary"
+            onClick={onCancel}
+            className="modern-btn"
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            className="modern-btn px-4"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Creating...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-plus me-2"></i>
+                Create Notification
+              </>
+            )}
+          </Button>
+        </div>
+      </Modal.Footer>
+    </>
   );
 };
 

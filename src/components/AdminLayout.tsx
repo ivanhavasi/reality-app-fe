@@ -48,26 +48,42 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
 
   return (
     <div className="d-flex flex-column" style={{minHeight: '100vh'}}>
-      <Navbar bg="body" data-bs-theme="auto" expand="lg" className="px-3 px-md-4 border-bottom">
+      {/* Modern Navbar with gradient */}
+      <Navbar
+        data-bs-theme="dark"
+        expand="lg"
+        className="px-3 px-md-4 shadow-sm"
+        style={{
+          background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+          borderBottom: 'none'
+        }}
+      >
         <div className="d-flex align-items-center">
           <Button
-            variant="outline-secondary"
+            variant="light"
             onClick={toggleSidebar}
-            className="me-2 me-md-3"
+            className="me-2 me-md-3 shadow-sm"
             size="sm"
             data-sidebar-toggle
           >
             <List />
           </Button>
-          <Navbar.Brand className="fw-bold fs-6 fs-md-5">Find Your Dream Home</Navbar.Brand>
+          <Navbar.Brand className="fw-bold fs-6 fs-md-5 text-white d-flex align-items-center">
+            🏠 <span className="ms-2">Havasi Reality Platform</span>
+          </Navbar.Brand>
         </div>
         <Navbar.Collapse className="justify-content-end">
           <Nav>
             <Dropdown align="end">
-              <Dropdown.Toggle variant="light" id="dropdown-basic" size="sm">
+              <Dropdown.Toggle
+                variant="light"
+                id="dropdown-basic"
+                size="sm"
+                className="shadow-sm"
+              >
                 <GearFill/>
               </Dropdown.Toggle>
-              <Dropdown.Menu>
+              <Dropdown.Menu className="shadow">
                 <Dropdown.Item onClick={() => navigate('/settings')}>
                   Settings
                 </Dropdown.Item>
@@ -84,10 +100,11 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
       <div className="d-flex flex-grow-1 overflow-hidden">
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
         <div
-          className="flex-grow-1 p-2 p-md-4 bg-body"
+          className="flex-grow-1 p-2 p-md-4"
           style={{
             overflow: 'auto',
             overflowX: 'hidden',
+            background: 'var(--bs-body-bg)',
             // Adjust margin on mobile when sidebar is open
             ...(isMobile && sidebarOpen ? { marginLeft: '0' } : {})
           }}

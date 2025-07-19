@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Spinner, Card, Button, Pagination } from 'react-bootstrap';
+import { Container, Row, Col, Spinner, Card, Button, Pagination, Badge, Alert } from 'react-bootstrap';
 import { fetchNotifications } from '../services/api';
 import { userService } from '../services/UserService';
 
@@ -86,103 +86,173 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
   };
 
   return (
-    <Container fluid className="px-2 px-md-4">
-      <h1 className="text-center my-3 my-md-4 fs-4 fs-md-1">Sent Notifications</h1>
-      <Row className="g-3 g-md-4">
-        {notifications.map((notification) => (
-          <Col key={notification.notificationId} xs={12} sm={6} lg={4} xl={3}>
-            <Card
-              className="h-100 shadow-sm"
-              style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
-              onClick={() => window.location.href = notification.realEstate.url}
-              onMouseOver={(e) => {
-                if (window.innerWidth > 768) {
-                  e.currentTarget.style.transform = 'translateY(-5px)';
-                  e.currentTarget.style.boxShadow = '0 .5rem 1rem rgba(0,0,0,.15)';
-                }
-              }}
-              onMouseOut={(e) => {
-                if (window.innerWidth > 768) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 .125rem .25rem rgba(0,0,0,.075)';
-                }
-              }}
-            >
-              <Card.Img
-                variant="top"
-                src={notification.realEstate.image || defaultImage}
-                alt={notification.realEstate.name}
-                style={{ height: '160px', objectFit: 'cover' }}
-              />
-              <Card.Body className="d-flex flex-column">
-                <Card.Title className="fs-6 line-clamp-2">{notification.realEstate.name}</Card.Title>
-                <Card.Text className="mb-2">
-                  <strong>Price:</strong> <span className="text-success fw-bold">{notification.realEstate.price.toFixed(0)} Kč</span>
-                </Card.Text>
-                <Card.Text className="mb-2">
-                  <strong>City:</strong> <span className="text-muted">{notification.realEstate.city}</span>
-                </Card.Text>
-                <Card.Text className="mb-2">
-                  <strong>Type:</strong> <span className="text-muted">{notification.type}</span>
-                </Card.Text>
-                <Card.Text className="mb-3">
-                  <small className="text-muted">
-                    Sent: {new Date(notification.sentAt).toLocaleDateString()}
-                  </small>
-                </Card.Text>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="mt-auto"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(notification.realEstate.url, '_blank');
-                  }}
-                >
-                  View Details
-                </Button>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
-      {loading && (
-        <div className="text-center my-4">
-          <Spinner animation="border" variant="primary" />
-          <div className="mt-2 text-muted">Loading notifications...</div>
-        </div>
-      )}
-
-      <div className="d-flex justify-content-center my-4">
-        <Pagination size="sm" className="flex-wrap">
-          <Pagination.Prev
-            disabled={currentPage === 1 || loading}
-            onClick={handlePreviousPage}
-          >
-            <span className="d-none d-sm-inline">Previous</span>
-            <span className="d-sm-none">‹</span>
-          </Pagination.Prev>
-          <Pagination.Item active>{currentPage}</Pagination.Item>
-          <Pagination.Next
-            disabled={loading}
-            onClick={handleNextPage}
-          >
-            <span className="d-none d-sm-inline">Next</span>
-            <span className="d-sm-none">›</span>
-          </Pagination.Next>
-        </Pagination>
+    <Container fluid className="p-0">
+      {/* Modern Header Section */}
+      <div className="gradient-header py-4 py-md-5 mb-4">
+        <Container>
+          <Row className="align-items-center">
+            <Col>
+              <h1 className="display-6 display-md-4 fw-bold text-white mb-2 mb-md-3">
+                Your Property Alerts
+              </h1>
+              <p className="text-white opacity-90 mb-0 fs-6">
+                Stay updated with the latest property notifications matching your preferences
+              </p>
+            </Col>
+            <Col xs="auto">
+              <div className="d-flex align-items-center text-white">
+                <i className="fas fa-bell fa-2x me-3 opacity-75"></i>
+                <div>
+                  <div className="fs-4 fw-bold">{notifications.length}</div>
+                  <small className="opacity-90">Notifications</small>
+                </div>
+              </div>
+            </Col>
+          </Row>
+        </Container>
       </div>
 
-      {/* Only show this message if we've fetched at least once and got no results */}
-      {!loading && notifications.length === 0 && (
-        <div className="text-center my-5">
-          <div className="alert alert-info d-inline-block">
-            <h5>No notifications found</h5>
-            <p className="mb-0">You haven't received any notifications yet.</p>
+      <Container>
+        {/* Loading State */}
+        {loading && (
+          <div className="loading-container">
+            <Spinner animation="border" role="status">
+              <span className="visually-hidden">Loading notifications...</span>
+            </Spinner>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Empty State */}
+        {!loading && notifications.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <i className="fas fa-bell-slash"></i>
+            </div>
+            <h3>No Notifications Yet</h3>
+            <p className="text-muted">
+              You haven't received any property notifications yet. Set up alerts to get notified about new listings!
+            </p>
+            <Button variant="primary" className="modern-btn" href="/notifications">
+              <i className="fas fa-plus me-2"></i>
+              Create Notifications
+            </Button>
+          </div>
+        )}
+
+        {/* Notifications Grid */}
+        {!loading && notifications.length > 0 && (
+          <>
+            <Row className="mb-4">
+              <Col>
+                <div className="d-flex justify-content-between align-items-center">
+                  <h4 className="mb-0">Recent Notifications</h4>
+                  <Badge bg="primary" className="fs-6 px-3 py-2">
+                    {notifications.length} Total
+                  </Badge>
+                </div>
+              </Col>
+            </Row>
+
+            <Row className="g-4">
+              {notifications.map((notification) => (
+                <Col key={notification.notificationId} sm={6} lg={4} xl={3}>
+                  <Card
+                    className="real-estate-card h-100"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => window.open(notification.realEstate.url, '_blank')}
+                  >
+                    {/* Property Image */}
+                    <div className="position-relative">
+                      <Card.Img
+                        variant="top"
+                        src={notification.realEstate.image || defaultImage}
+                        alt={notification.realEstate.name}
+                        className="card-img-top"
+                        style={{ height: '200px', objectFit: 'cover' }}
+                      />
+                      <Badge
+                        bg="success"
+                        className="position-absolute top-0 start-0 m-2"
+                      >
+                        {notification.type}
+                      </Badge>
+                      <Badge
+                        bg="secondary"
+                        className="position-absolute top-0 end-0 m-2"
+                      >
+                        {notification.realEstate.provider}
+                      </Badge>
+                    </div>
+
+                    <Card.Body className="d-flex flex-column">
+                      <Card.Title className="h6 mb-2 line-clamp-2">
+                        {notification.realEstate.name}
+                      </Card.Title>
+
+                      <div className="d-flex align-items-center text-muted mb-2">
+                        <i className="fas fa-map-marker-alt me-1"></i>
+                        <small className="line-clamp-1">
+                          {notification.realEstate.city}
+                        </small>
+                      </div>
+
+                      <div className="mt-auto">
+                        <div className="price-badge py-1 px-2 mb-2 text-center">
+                          <div className="fw-bold">
+                            {notification.realEstate.price.toLocaleString()} Kč
+                          </div>
+                        </div>
+
+                        <div className="d-flex justify-content-between align-items-center">
+                          <small className="text-muted">
+                            {new Date(notification.sentAt).toLocaleDateString()}
+                          </small>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="modern-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(notification.realEstate.url, '_blank');
+                            }}
+                          >
+                            <i className="fas fa-external-link-alt me-1"></i>
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+
+            {/* Pagination */}
+            {hasMore && (
+              <div className="d-flex justify-content-center mt-5">
+                <Button
+                  variant="primary"
+                  className="modern-btn px-4 py-2"
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Spinner size="sm" className="me-2" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-chevron-down me-2"></i>
+                      Load More
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </Container>
     </Container>
   );
 };
