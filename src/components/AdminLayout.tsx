@@ -23,7 +23,7 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
   return (
     <div className="d-flex flex-column" style={{minHeight: '100vh'}}>
       <Navbar bg="body" data-bs-theme="auto" expand="lg" className="px-4 border-bottom">
-        <Navbar.Brand className="fw-bold">Admin Panel</Navbar.Brand>
+        <Navbar.Brand className="fw-bold">Find Your Dream Home</Navbar.Brand>
         <Navbar.Collapse className="justify-content-end">
           <Nav>
             <Dropdown align="end">

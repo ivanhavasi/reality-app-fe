@@ -1,6 +1,6 @@
 import React from 'react';
 import { useUser } from '../context/UserContext';
-import AccessDenied from '../pages/AccessDenied';
+import {Navigate} from "react-router-dom";
 
 interface AdminRouteProps {
   element: React.ReactElement;
@@ -11,7 +11,7 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ element }) => {
 
   if (!isAdmin) {
     // Show access denied page to non-admin users
-    return <AccessDenied />;
+    return <Navigate to="/"/>;
   }
 
   return element;

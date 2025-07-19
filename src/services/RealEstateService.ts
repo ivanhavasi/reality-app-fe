@@ -7,7 +7,8 @@ export const fetchRealEstates = async (
   offset: number = 0,
   limit: number = 10,
   sortDirection: SortDirection = 'DESC',
-  search?: string
+  search?: string,
+  transaction?: 'SALE' | 'RENT'
 ): Promise<RealEstate[]> => {
   const url = new URL(`${API_BASE_URL}/api/real-estates`);
   url.searchParams.append('offset', offset.toString());
@@ -17,6 +18,11 @@ export const fetchRealEstates = async (
   // Add search parameter if provided and not empty
   if (search && search.trim() !== '') {
     url.searchParams.append('search', encodeURIComponent(search.trim()));
+  }
+
+  // Add transaction parameter if provided
+  if (transaction) {
+    url.searchParams.append('transaction', transaction);
   }
 
   const res = await fetch(url.toString(), {

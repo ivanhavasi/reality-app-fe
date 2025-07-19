@@ -19,6 +19,7 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('DESC');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
+  const [transactionType, setTransactionType] = useState<'SALE' | 'RENT'>('SALE');
 
   const itemsPerPage = 10;
 
@@ -26,9 +27,15 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const searchParam = urlParams.get('search');
+    const transactionParam = urlParams.get('transaction');
+
     if (searchParam) {
       setSearchTerm(decodeURIComponent(searchParam));
       setDebouncedSearchTerm(decodeURIComponent(searchParam));
+    }
+
+    if (transactionParam && (transactionParam === 'SALE' || transactionParam === 'RENT')) {
+      setTransactionType(transactionParam);
     }
   }, []);
 
@@ -55,7 +62,7 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
       setCurrentPage(1);
     }
     loadRealEstates();
-  }, [currentPage, sortDirection, debouncedSearchTerm]);
+  }, [currentPage, sortDirection, debouncedSearchTerm, transactionType]);
 
   const loadRealEstates = async () => {
     try {
@@ -67,7 +74,8 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
         offset,
         itemsPerPage + 1, // Request one extra item to check if there are more pages
         sortDirection,
-        debouncedSearchTerm
+        debouncedSearchTerm,
+        transactionType
       );
 
       // Check if we have more items than the requested limit
@@ -100,6 +108,21 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
   const handleSortDirectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSortDirection(e.target.value as SortDirection);
     setCurrentPage(1); // Reset to first page when changing sort direction
+  };
+
+  const handleTransactionTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTransactionType = e.target.value as 'SALE' | 'RENT';
+    setTransactionType(newTransactionType);
+    setCurrentPage(1); // Reset to first page when changing transaction type
+
+    // Update URL with transaction type parameter
+    const url = new URL(window.location.href);
+    if (newTransactionType) {
+      url.searchParams.set('transaction', newTransactionType);
+    } else {
+      url.searchParams.delete('transaction');
+    }
+    window.history.replaceState({}, '', url.toString());
   };
 
   // Check if we have more pages based on current data
@@ -227,6 +250,16 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
             >
               <option value="DESC">Newest first</option>
               <option value="ASC">Oldest first</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group controlId="transactionType">
+            <Form.Select
+              value={transactionType}
+              onChange={handleTransactionTypeChange}
+              size="sm"
+            >
+              <option value="SALE">For Sale</option>
+              <option value="RENT">For Rent</option>
             </Form.Select>
           </Form.Group>
         </Col>
