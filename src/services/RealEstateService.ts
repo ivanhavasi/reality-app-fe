@@ -1,5 +1,5 @@
 import {RealEstate} from '../types/realEstate';
-import {API_BASE_URL, getAuthHeaders, handleApiError} from "./api";
+import {API_BASE_URL, getAuthHeaders, handleApiError, apiRequest} from "./api";
 
 export type SortDirection = 'ASC' | 'DESC';
 
@@ -25,7 +25,7 @@ export const fetchRealEstates = async (
     url.searchParams.append('transaction', transaction);
   }
 
-  const res = await fetch(url.toString(), {
+  const res = await apiRequest(url.toString(), {
     headers: getAuthHeaders(),
   });
 
