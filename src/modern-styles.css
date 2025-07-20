@@ -74,32 +74,69 @@
 /* Sidebar navigation styles */
 .nav-item {
   transition: all 0.2s ease;
-  cursor: pointer;
+  border: 1px solid transparent;
 }
 
-.nav-item:hover:not(.nav-item-active) {
-  background-color: var(--bs-secondary-bg) !important;
+.nav-item:hover {
+  background-color: var(--bs-secondary-bg);
+  border-color: var(--bs-border-color);
 }
 
 .nav-item-active {
-  background-color: var(--bs-primary) !important;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   color: white !important;
+  border-color: transparent;
 }
 
-.nav-item-active * {
-  color: white !important;
+.nav-item-active .nav-description {
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .nav-item-active .nav-icon {
-  background-color: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
 }
 
-.nav-item:not(.nav-item-active) .nav-icon {
-  background-color: var(--bs-primary-bg-subtle) !important;
+.nav-icon {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  transition: all 0.2s ease;
 }
 
-.nav-item:not(.nav-item-active) .nav-icon i {
-  color: var(--bs-primary) !important;
+.nav-description {
+  color: var(--bs-secondary-color);
+  transition: color 0.2s ease;
+}
+
+/* Compact navigation items for bottom section */
+.nav-item-compact {
+  min-height: 40px;
+}
+
+.nav-item-compact .nav-icon-compact {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  transition: all 0.2s ease;
+}
+
+.nav-item-compact.nav-item-active .nav-icon-compact {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Logout button special styling */
+.nav-item-logout:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+  border-color: rgba(220, 53, 69, 0.3);
+}
+
+.nav-item-logout:hover .nav-icon-compact {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.nav-item-logout:hover .fw-medium {
+  color: #dc3545;
 }
 
 /* Modern search input */

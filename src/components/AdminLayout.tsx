@@ -1,4 +1,4 @@
-import {Navigate, Route, Routes, useNavigate} from 'react-router-dom';
+import {Navigate, Route, Routes} from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Dashboard from '../pages/Dashboard';
 import Settings from '../pages/Settings';
@@ -8,14 +8,13 @@ import ReceivedNotifications from '../pages/ReceivedNotifications';
 import Notifications from '../pages/Notifications';
 import RealEstates from '../pages/RealEstates';
 import RealEstateDetail from '../pages/RealEstateDetail';
-import {Dropdown, Nav, Navbar, Button} from 'react-bootstrap';
-import {GearFill, List} from 'react-bootstrap-icons';
+import {Navbar, Button} from 'react-bootstrap';
+import {List} from 'react-bootstrap-icons';
 import {useAuth} from '../context/AuthContext';
 import {useState, useEffect} from 'react';
 
 const AdminLayout = ({children}: { children?: React.ReactNode }) => {
-  const navigate = useNavigate();
-  const {logout, token} = useAuth();
+  const {token} = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -34,10 +33,6 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-  };
-
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -48,14 +43,16 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
 
   return (
     <div className="d-flex flex-column" style={{minHeight: '100vh'}}>
-      {/* Modern Navbar with gradient */}
+      {/* Modern Navbar with gradient - Fixed position to stay above sidebar */}
       <Navbar
         data-bs-theme="dark"
         expand="lg"
-        className="px-3 px-md-4 shadow-sm"
+        className="px-3 px-md-4 shadow-sm position-fixed w-100"
         style={{
           background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-          borderBottom: 'none'
+          borderBottom: 'none',
+          zIndex: 1050, // Higher than sidebar to stay on top
+          top: 0
         }}
       >
         <div className="d-flex align-items-center">
@@ -72,32 +69,10 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
             🏠 <span className="ms-2">Havasi Reality Platform</span>
           </Navbar.Brand>
         </div>
-        <Navbar.Collapse className="justify-content-end">
-          <Nav>
-            <Dropdown align="end">
-              <Dropdown.Toggle
-                variant="light"
-                id="dropdown-basic"
-                size="sm"
-                className="shadow-sm"
-              >
-                <GearFill/>
-              </Dropdown.Toggle>
-              <Dropdown.Menu className="shadow">
-                <Dropdown.Item onClick={() => navigate('/settings')}>
-                  Settings
-                </Dropdown.Item>
-                <Dropdown.Divider/>
-                <Dropdown.Item onClick={handleLogout}>
-                  Logout
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
-          </Nav>
-        </Navbar.Collapse>
       </Navbar>
 
-      <div className="d-flex flex-grow-1 overflow-hidden">
+      {/* Main content area with top padding for fixed navbar */}
+      <div className="d-flex flex-grow-1 overflow-hidden" style={{ paddingTop: '70px' }}>
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
         <div
           className="flex-grow-1 p-2 p-md-4"
@@ -105,8 +80,11 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
             overflow: 'auto',
             overflowX: 'hidden',
             background: 'var(--bs-body-bg)',
-            // Adjust margin on mobile when sidebar is open
-            ...(isMobile && sidebarOpen ? { marginLeft: '0' } : {})
+            // Add left margin for fixed sidebar on desktop
+            marginLeft: window.innerWidth > 768 ? (sidebarOpen ? '280px' : '0') : '0',
+            transition: 'margin-left 0.3s ease',
+            // Mobile doesn't need margin since sidebar is overlay
+            ...(isMobile ? { marginLeft: '0' } : {})
           }}
         >
           {children || (
