@@ -19,11 +19,23 @@
   border-radius: 15px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
   transition: all 0.3s ease;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
 }
 
 .modern-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode adjustments for modern cards */
+[data-bs-theme="dark"] .modern-card {
+  box-shadow: 0 4px 6px rgba(255, 255, 255, 0.05);
+  background-color: var(--bs-dark);
+}
+
+[data-bs-theme="dark"] .modern-card:hover {
+  box-shadow: 0 8px 15px rgba(255, 255, 255, 0.1);
 }
 
 /* Real Estate Card Styling */
@@ -33,11 +45,27 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
   transition: all 0.3s ease;
   overflow: hidden;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
 }
 
 .real-estate-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark mode adjustments for real estate cards */
+[data-bs-theme="dark"] .real-estate-card {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  background-color: var(--bs-body-bg);
+  border: 2px solid var(--bs-border-color);
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .real-estate-card:hover {
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
+  border-color: var(--bs-primary);
+  outline-color: rgba(255, 255, 255, 0.2);
 }
 
 .real-estate-card .card-img-top {
@@ -59,16 +87,18 @@
 }
 
 .property-feature {
-  background-color: var(--bs-light);
+  background-color: var(--bs-secondary-bg);
   border-radius: 8px;
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
-  color: var(--bs-dark);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
 }
 
 [data-bs-theme="dark"] .property-feature {
-  background-color: var(--bs-dark);
-  color: var(--bs-light);
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
 }
 
 /* Sidebar navigation styles */
@@ -100,6 +130,12 @@
 .nav-icon {
   background-color: var(--bs-secondary-bg);
   color: var(--bs-body-color);
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s ease;
 }
 
@@ -153,16 +189,27 @@
   border-color: transparent;
 }
 
-/* Modern buttons */
+/* Modern button styles */
 .modern-btn {
-  border-radius: 10px;
-  border: none;
+  border-radius: 8px;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .modern-btn:hover {
   transform: translateY(-1px);
+}
+
+/* Dark mode adjustments for buttons */
+[data-bs-theme="dark"] .btn-outline-primary {
+  border-color: var(--bs-primary);
+  color: var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .btn-outline-primary:hover {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
 }
 
 /* Empty state styling */
