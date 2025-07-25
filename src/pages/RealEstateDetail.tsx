@@ -543,10 +543,10 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
 
   if (loading) {
     return (
-      <Container fluid>
+      <Container>
         <div className="loading-container">
           <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">Loading real estate details...</span>
           </Spinner>
         </div>
       </Container>
@@ -556,14 +556,14 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
   if (error) {
     return (
       <Container>
-        <Alert variant="danger" className="mt-4">
-          <Alert.Heading>Error</Alert.Heading>
+        <Alert variant="danger">
+          <Alert.Heading>Error Loading Property</Alert.Heading>
           {error}
           <hr />
           <div className="d-flex justify-content-end">
-            <Button variant="outline-danger" onClick={() => navigate('/real-estates')}>
+            <Button variant="outline-danger" onClick={() => navigate(-1)}>
               <ArrowLeft className="me-2" />
-              Back to Real Estates
+              Back
             </Button>
           </div>
         </Alert>
@@ -580,9 +580,9 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
           </div>
           <h3>Property Not Found</h3>
           <p className="text-muted">The requested property could not be found.</p>
-          <Button variant="primary" className="modern-btn" onClick={() => navigate('/real-estates')}>
+          <Button variant="primary" className="modern-btn" onClick={() => navigate(-1)}>
             <ArrowLeft className="me-2" />
-            Back to Real Estates
+            Back
           </Button>
         </div>
       </Container>
@@ -599,10 +599,10 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
               <Button
                 variant="light"
                 className="modern-btn mb-3 shadow-sm"
-                onClick={() => navigate('/real-estates')}
+                onClick={() => navigate(-1)}
               >
                 <ArrowLeft className="me-2" />
-                Back to Properties
+                Back
               </Button>
               <h1
                 className="display-6 display-md-4 fw-bold text-white mb-2"

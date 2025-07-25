@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Spinner, Card, Button, Pagination, Badge, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { fetchNotifications } from '../services/api';
 import { userService } from '../services/UserService';
 
@@ -26,6 +27,7 @@ interface ReceivedNotificationsProps {
 }
 
 const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<SentNotification[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   // Always assume there are more pages until proven otherwise
@@ -83,6 +85,10 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
   const handlePreviousPage = () => {
     if (currentPage === 1 || loading) return; // Prevent navigating if already at first page or loading
     setCurrentPage((prevPage) => prevPage - 1);
+  };
+
+  const handleRealEstateClick = (realEstateId: string) => {
+    navigate(`/real-estates/${realEstateId}`);
   };
 
   return (
@@ -159,7 +165,7 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
                   <Card
                     className="real-estate-card h-100"
                     style={{ cursor: 'pointer' }}
-                    onClick={() => window.open(notification.realEstate.url, '_blank')}
+                    onClick={() => handleRealEstateClick(notification.realEstate.id)}
                   >
                     {/* Property Image */}
                     <div className="position-relative">
@@ -213,10 +219,10 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
                             className="modern-btn"
                             onClick={(e) => {
                               e.stopPropagation();
-                              window.open(notification.realEstate.url, '_blank');
+                              handleRealEstateClick(notification.realEstate.id);
                             }}
                           >
-                            <i className="fas fa-external-link-alt me-1"></i>
+                            <i className="fas fa-eye me-1"></i>
                             View
                           </Button>
                         </div>
