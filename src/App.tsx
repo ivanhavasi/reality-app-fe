@@ -6,8 +6,27 @@ import AdminLayout from './components/AdminLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { UserProvider } from './context/UserContext';
 import { RealEstateProvider } from './context/RealEstateContext';
+import PublicRealEstateDetail from './pages/PublicRealEstateDetail';
+import RealEstateDetail from './pages/RealEstateDetail';
 import './mobile-improvements.css';
 import './modern-styles.css';
+
+// Component to show the appropriate real estate detail based on authentication
+const RealEstateDetailRouter: React.FC = () => {
+  const { isAuthenticated, token } = useAuth();
+
+  if (isAuthenticated) {
+    // Show the full admin version with sidebar and all features
+    return (
+      <AdminLayout>
+        <RealEstateDetail token={token || ''} />
+      </AdminLayout>
+    );
+  } else {
+    // Show public version for non-authenticated users
+    return <PublicRealEstateDetail />;
+  }
+};
 
 const AppContent = () => {
   const { isAuthenticated, isInitializing } = useAuth();
@@ -29,6 +48,9 @@ const AppContent = () => {
   return (
     <Routes>
       <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
+      {/* Same URL shows different components based on authentication */}
+      <Route path="/real-estates/:id" element={<RealEstateDetailRouter />} />
+      {/* All other routes require authentication */}
       <Route path="/*" element={isAuthenticated ? <AdminLayout /> : <Navigate to="/login" />} />
     </Routes>
   );

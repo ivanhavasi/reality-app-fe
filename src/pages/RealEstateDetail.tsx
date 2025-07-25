@@ -4,6 +4,7 @@ import { Container, Row, Col, Card, Badge, Button, Spinner, Carousel, Table, Ale
 import { useRealEstate } from '../context/RealEstateContext';
 import { RealEstate, Duplicate } from '../types/realEstate';
 import { ArrowLeft, GeoAlt, Houses, CardImage, Info, Link as LinkIcon } from 'react-bootstrap-icons';
+import { fetchRealEstateById } from '../services/RealEstateService';
 
 interface RealEstateDetailProps {
   token?: string;
@@ -23,17 +24,27 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
     }
   }, [id]);
 
-  const loadRealEstateDetails = (estateId: string) => {
+  const loadRealEstateDetails = async (estateId: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const estate = findEstateById(estateId);
+      // Try to fetch from the new endpoint first (accessible to all users)
+      try {
+        const estateData = await fetchRealEstateById(estateId);
+        setRealEstate(estateData);
+        setLoading(false);
+        return;
+      } catch (fetchError) {
+        console.warn("Could not fetch from public endpoint, falling back to context:", fetchError);
 
-      if (estate) {
-        setRealEstate(estate);
-      } else {
-        setError('Real estate not found');
+        // Fallback to context if public endpoint fails
+        const estate = findEstateById(estateId);
+        if (estate) {
+          setRealEstate(estate);
+        } else {
+          setError('Real estate not found');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load real estate details');

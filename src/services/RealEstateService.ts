@@ -3,6 +3,19 @@ import {API_BASE_URL, getAuthHeaders, handleApiError, apiRequest} from "./api";
 
 export type SortDirection = 'ASC' | 'DESC';
 
+export const fetchRealEstateById = async (id: string): Promise<RealEstate> => {
+  const url = `${API_BASE_URL}/api/real-estates/${id}`;
+
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(error || 'Failed to fetch real estate details');
+  }
+
+  return await res.json();
+};
+
 export const fetchRealEstates = async (
   offset: number = 0,
   limit: number = 10,
@@ -46,5 +59,6 @@ export const fetchRealEstates = async (
 };
 
 export const realEstateService = {
-  fetchRealEstates
+  fetchRealEstates,
+  fetchRealEstateById
 };
