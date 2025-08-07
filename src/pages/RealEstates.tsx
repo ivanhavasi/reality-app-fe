@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Col, Container, Form, Pagination, Row, Spinner, Badge, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { Button, Card, Col, Container, Form, Pagination, Row, Spinner, Badge, OverlayTrigger, Tooltip, Collapse } from 'react-bootstrap';
 import { useRealEstate } from '../context/RealEstateContext';
 import { fetchRealEstates, SortDirection } from '../services/RealEstateService';
 import { RealEstate } from '../types/realEstate';
 import MultiRealEstateMap from '../components/MultiRealEstateMap';
+import DualRangeSlider from '../components/DualRangeSlider';
 
 interface RealEstatesProps {
   token?: string;
@@ -21,6 +22,18 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
   const [transactionType, setTransactionType] = useState<'SALE' | 'RENT'>('SALE');
+  const [advancedSearchOpen, setAdvancedSearchOpen] = useState<boolean>(false);
+  const [building, setBuilding] = useState<string>('APARTMENT');
+  const [sizeMin, setSizeMin] = useState<number>(0);
+  const [sizeMax, setSizeMax] = useState<number>(300);
+  const [priceMin, setPriceMin] = useState<number>(0);
+  const [priceMax, setPriceMax] = useState<number>(transactionType === 'RENT' ? 250000 : 100000000);
+
+  // Debounced versions of slider values
+  const [debouncedSizeMin, setDebouncedSizeMin] = useState<number>(0);
+  const [debouncedSizeMax, setDebouncedSizeMax] = useState<number>(300);
+  const [debouncedPriceMin, setDebouncedPriceMin] = useState<number>(0);
+  const [debouncedPriceMax, setDebouncedPriceMax] = useState<number>(transactionType === 'RENT' ? 250000 : 100000000);
 
   const itemsPerPage = 10;
 
@@ -29,6 +42,11 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
     const urlParams = new URLSearchParams(window.location.search);
     const searchParam = urlParams.get('search');
     const transactionParam = urlParams.get('transaction');
+    const buildingParam = urlParams.get('building');
+    const sizeMinParam = urlParams.get('sizeMin');
+    const sizeMaxParam = urlParams.get('sizeMax');
+    const priceMinParam = urlParams.get('priceMin');
+    const priceMaxParam = urlParams.get('priceMax');
 
     if (searchParam) {
       setSearchTerm(decodeURIComponent(searchParam));
@@ -37,6 +55,35 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
 
     if (transactionParam && (transactionParam === 'SALE' || transactionParam === 'RENT')) {
       setTransactionType(transactionParam);
+    }
+
+    // Set advanced search parameters if present in URL
+    if (buildingParam) {
+      setBuilding(buildingParam);
+    }
+
+    if (sizeMinParam && !isNaN(Number(sizeMinParam))) {
+      const sizeMinValue = Number(sizeMinParam);
+      setSizeMin(sizeMinValue);
+      setDebouncedSizeMin(sizeMinValue);
+    }
+
+    if (sizeMaxParam && !isNaN(Number(sizeMaxParam))) {
+      const sizeMaxValue = Number(sizeMaxParam);
+      setSizeMax(sizeMaxValue);
+      setDebouncedSizeMax(sizeMaxValue);
+    }
+
+    if (priceMinParam && !isNaN(Number(priceMinParam))) {
+      const priceMinValue = Number(priceMinParam);
+      setPriceMin(priceMinValue);
+      setDebouncedPriceMin(priceMinValue);
+    }
+
+    if (priceMaxParam && !isNaN(Number(priceMaxParam))) {
+      const priceMaxValue = Number(priceMaxParam);
+      setPriceMax(priceMaxValue);
+      setDebouncedPriceMax(priceMaxValue);
     }
   }, []);
 
@@ -57,13 +104,25 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Debounce slider values to avoid too many API calls and map re-renders
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSizeMin(sizeMin);
+      setDebouncedSizeMax(sizeMax);
+      setDebouncedPriceMin(priceMin);
+      setDebouncedPriceMax(priceMax);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [sizeMin, sizeMax, priceMin, priceMax]);
+
   useEffect(() => {
     // Reset to first page when search term changes
     if (debouncedSearchTerm !== searchTerm) {
       setCurrentPage(1);
     }
     loadRealEstates();
-  }, [currentPage, sortDirection, debouncedSearchTerm, transactionType]);
+  }, [currentPage, sortDirection, debouncedSearchTerm, transactionType, building, debouncedSizeMin, debouncedSizeMax, debouncedPriceMin, debouncedPriceMax]);
 
   const loadRealEstates = async () => {
     try {
@@ -76,7 +135,12 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
         itemsPerPage + 1, // Request one extra item to check if there are more pages
         sortDirection,
         debouncedSearchTerm,
-        transactionType
+        transactionType,
+        building,
+        sizeMin,
+        sizeMax,
+        priceMin,
+        priceMax
       );
 
       // Check if we have more items than the requested limit
@@ -116,14 +180,19 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
     setTransactionType(newTransactionType);
     setCurrentPage(1); // Reset to first page when changing transaction type
 
-    // Update URL with transaction type parameter
-    const url = new URL(window.location.href);
-    if (newTransactionType) {
-      url.searchParams.set('transaction', newTransactionType);
-    } else {
-      url.searchParams.delete('transaction');
+    try {
+      // Update URL with transaction type parameter
+      const url = new URL(window.location.href);
+      if (newTransactionType) {
+        url.searchParams.set('transaction', newTransactionType);
+      } else {
+        url.searchParams.delete('transaction');
+      }
+      window.history.replaceState({}, '', url.toString());
+    } catch (error) {
+      console.error('Error updating URL during transaction type change:', error);
+      // Silent fail to prevent UI from breaking
     }
-    window.history.replaceState({}, '', url.toString());
   };
 
   // Check if we have more pages based on current data
@@ -157,7 +226,7 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
           key={currentPage - 2} 
           onClick={() => handlePageChange(currentPage - 2)}
         >
-          {currentPage - 2}
+        {currentPage - 2}
         </Pagination.Item>
       );
 
@@ -233,6 +302,78 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
       return `${price.toLocaleString()} Kč`;
     }
     return `${price.toLocaleString()} ${currency}`;
+  };
+
+  // Handle advanced search parameter updates
+  const updateAdvancedSearchParams = () => {
+    setCurrentPage(1); // Reset to first page when changing filters
+
+    try {
+      // Update URL with advanced search parameters
+      const url = new URL(window.location.href);
+
+      // Building type
+      url.searchParams.set('building', building);
+
+      // Size range
+      url.searchParams.set('sizeMin', sizeMin.toString());
+      url.searchParams.set('sizeMax', sizeMax.toString());
+
+      // Price range
+      url.searchParams.set('priceMin', priceMin.toString());
+      url.searchParams.set('priceMax', priceMax.toString());
+
+      window.history.replaceState({}, '', url.toString());
+    } catch (error) {
+      console.error('Error updating URL:', error);
+      // Silent fail to prevent UI from breaking
+    }
+  };
+
+  // Create a debounced version of updateAdvancedSearchParams
+  const debouncedUpdateParams = (() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        updateAdvancedSearchParams();
+        timeoutId = null;
+      }, 200); // 200ms debounce delay
+    };
+  })();
+
+  // Update URL parameters whenever advanced search values change
+  useEffect(() => {
+    // Use the debounced version to avoid too many history operations
+    debouncedUpdateParams();
+  }, [building, sizeMin, sizeMax, priceMin, priceMax]);
+
+  // Reset advanced search parameters to defaults
+  const resetAdvancedSearch = () => {
+    // Reset advanced search parameters
+    setBuilding('APARTMENT');
+    setSizeMin(0);
+    setSizeMax(1000);
+    setPriceMin(0);
+    setPriceMax(1000000000);
+
+    // Reset basic search parameters
+    setSearchTerm('');
+    setTransactionType('SALE');
+    setSortDirection('DESC');
+
+    // Update URL by removing all search parameters
+    const url = new URL(window.location.href);
+    url.searchParams.delete('building');
+    url.searchParams.delete('sizeMin');
+    url.searchParams.delete('sizeMax');
+    url.searchParams.delete('priceMin');
+    url.searchParams.delete('priceMax');
+    url.searchParams.delete('search');
+    url.searchParams.delete('transaction');
+    window.history.replaceState({}, '', url.toString());
   };
 
   return (
@@ -324,6 +465,126 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
                   </Row>
                 </Col>
               </Row>
+
+              {/* Advanced Search Toggle Button */}
+              <Row className="mt-3">
+                <Col>
+                  <Button
+                    variant="outline-light"
+                    className="d-flex align-items-center w-100 justify-content-center"
+                    onClick={() => setAdvancedSearchOpen(!advancedSearchOpen)}
+                    aria-controls="advanced-search-collapse"
+                    aria-expanded={advancedSearchOpen}
+                  >
+                    <i className={`fas fa-${advancedSearchOpen ? 'minus' : 'plus'} me-2`}></i>
+                    {advancedSearchOpen ? 'Hide Advanced Search' : 'Advanced Search'}
+                  </Button>
+                </Col>
+              </Row>
+
+              {/* Advanced Search Collapsible Form */}
+              <Collapse in={advancedSearchOpen}>
+                <div id="advanced-search-collapse" className="mt-3">
+                  <div className="p-4 rounded" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(10px)' }}>
+                    <Row className="g-3">
+                      {/* Building Type */}
+                      <Col xs={12}>
+                        <Form.Group>
+                          <Form.Label className="text-white fw-bold">
+                            <i className="fas fa-building me-2"></i>
+                            Building Type
+                          </Form.Label>
+                          <Form.Select
+                            value={building}
+                            onChange={(e) => setBuilding(e.target.value)}
+                            className="shadow-sm border-0"
+                            size="lg"
+                            style={{
+                              backgroundColor: 'var(--bs-body-bg)',
+                              color: 'var(--bs-body-color)',
+                              opacity: 0.95,
+                              height: '48px'
+                            }}
+                          >
+                            <option value="APARTMENT">Apartment</option>
+                            <option value="HOUSE">House</option>
+                            <option value="LAND">Land</option>
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+
+                      {/* Size Range */}
+                      <Col xs={12}>
+                        <Form.Group>
+                          <Form.Label className="text-white fw-bold mb-3">
+                            <i className="fas fa-expand-arrows-alt me-2"></i>
+                            Size Range
+                          </Form.Label>
+                          <div className="slider-container">
+                            <DualRangeSlider
+                              minValue={sizeMin}
+                              maxValue={sizeMax}
+                              min={0}
+                              max={300}
+                              onChange={(min, max) => {
+                                setSizeMin(min);
+                                setSizeMax(max);
+                              }}
+                              formatValue={(value) => `${value} m²`}
+                            />
+                          </div>
+                        </Form.Group>
+                      </Col>
+
+                      {/* Price Range */}
+                      <Col xs={12}>
+                        <Form.Group>
+                          <Form.Label className="text-white fw-bold mb-3">
+                            <i className="fas fa-money-bill me-2"></i>
+                            Price Range ({transactionType === 'SALE' ? 'CZK' : 'CZK/month'})
+                          </Form.Label>
+                          <div className="slider-container">
+                            <DualRangeSlider
+                              minValue={priceMin}
+                              maxValue={priceMax}
+                              min={0}
+                              max={transactionType === 'RENT' ? 250000 : 100000000}
+                              step={transactionType === 'RENT' ? 500 : 100000}
+                              onChange={(min, max) => {
+                                setPriceMin(min);
+                                setPriceMax(max);
+                              }}
+                              formatValue={(value) => {
+                                if (transactionType === 'RENT') {
+                                  return value >= 1000 ? `${(value / 1000).toFixed(0)}K` : `${value}`;
+                                }
+                                return value >= 1000000
+                                  ? `${(value / 1000000).toFixed(1)}M`
+                                  : `${(value / 1000).toFixed(0)}K`;
+                              }}
+                            />
+                          </div>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+
+                    {/* Centered Reset Button */}
+                    <Row className="mt-4">
+                      <Col className="d-flex justify-content-center">
+                        <Button
+                          variant="outline-light"
+                          onClick={resetAdvancedSearch}
+                          className="shadow px-4"
+                          style={{ height: '42px' }}
+                        >
+                          <i className="fas fa-undo me-2"></i>
+                          Reset Filters
+                        </Button>
+                      </Col>
+                    </Row>
+                  </div>
+                </div>
+              </Collapse>
             </Col>
           </Row>
         </Container>

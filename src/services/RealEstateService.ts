@@ -21,7 +21,12 @@ export const fetchRealEstates = async (
   limit: number = 10,
   sortDirection: SortDirection = 'DESC',
   search?: string,
-  transaction?: 'SALE' | 'RENT'
+  transaction?: 'SALE' | 'RENT',
+  building: string = 'APARTMENT',
+  sizeMin: number = 0,
+  sizeMax: number = 1000,
+  priceMin: number = 0,
+  priceMax: number = 1000000000
 ): Promise<RealEstate[]> => {
   const url = new URL(`${API_BASE_URL}/api/real-estates`);
   url.searchParams.append('offset', offset.toString());
@@ -37,6 +42,13 @@ export const fetchRealEstates = async (
   if (transaction) {
     url.searchParams.append('transaction', transaction);
   }
+
+  // Add advanced search parameters
+  url.searchParams.append('building', building);
+  url.searchParams.append('sizeMin', sizeMin.toString());
+  url.searchParams.append('sizeMax', sizeMax.toString());
+  url.searchParams.append('priceMin', priceMin.toString());
+  url.searchParams.append('priceMax', priceMax.toString());
 
   const res = await apiRequest(url.toString(), {
     headers: getAuthHeaders(),
