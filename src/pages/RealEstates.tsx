@@ -4,6 +4,7 @@ import { Button, Card, Col, Container, Form, Pagination, Row, Spinner, Badge, Ov
 import { useRealEstate } from '../context/RealEstateContext';
 import { fetchRealEstates, SortDirection } from '../services/RealEstateService';
 import { RealEstate } from '../types/realEstate';
+import MultiRealEstateMap from '../components/MultiRealEstateMap';
 
 interface RealEstatesProps {
   token?: string;
@@ -400,6 +401,19 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
                       {debouncedSearchTerm && <> for "{debouncedSearchTerm}"</>}
                     </p>
                   </div>
+                </div>
+              </Col>
+            </Row>
+
+            {/* Map showing all real estate locations */}
+            <Row className="mb-5">
+              <Col>
+                <div className="modern-card border-0 shadow-sm p-0 overflow-hidden">
+                  <h5 className="p-3 m-0 border-bottom">RealEstates</h5>
+                  <MultiRealEstateMap
+                    realEstates={realEstates}
+                    height="500px"
+                  />
                 </div>
               </Col>
             </Row>
