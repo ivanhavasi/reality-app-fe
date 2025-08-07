@@ -156,6 +156,8 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
     const mapInstanceRef = useRef<L.Map | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const markersRef = useRef<L.Marker[]>([]);
+    const geocodingQueueRef = useRef<RealEstate[]>([]);
 
     const createMarkerForEstate = (estate: RealEstate, location: [number, number], map: L.Map): L.Marker => {
         const marker = L.marker(location);
@@ -193,7 +195,44 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
 
         marker.bindPopup(popupContent);
         marker.addTo(map);
+        markersRef.current.push(marker);
         return marker;
+    };
+
+    // Process geocoding in the background after initial map load
+    const processGeocodingQueue = async () => {
+        const properties = geocodingQueueRef.current;
+        if (properties.length === 0 || !mapInstanceRef.current) return;
+
+        // Process in smaller batches to be API-friendly
+        const batchSize = 2;
+        const delay = 300; // ms between batches
+
+        for (let i = 0; i < properties.length; i += batchSize) {
+            if (!mapInstanceRef.current) break; // Stop if map was unmounted
+
+            const batch = properties.slice(i, i + batchSize);
+            const batchPromises = batch.map(async (estate) => {
+                try {
+                    const coords = await MapUtilities.geocodeAddress(estate.locality);
+                    if (coords && mapInstanceRef.current) {
+                        createMarkerForEstate(estate, coords, mapInstanceRef.current);
+                    }
+                } catch (err) {
+                    console.warn(`Geocoding failed for property ${estate.id}`, err);
+                }
+            });
+
+            await Promise.all(batchPromises);
+
+            // Don't delay after the last batch
+            if (i + batchSize < properties.length) {
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+
+        // Clear the queue after processing
+        geocodingQueueRef.current = [];
     };
 
     const initializeMap = async () => {
@@ -201,11 +240,14 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
             setLoading(true);
             setError(null);
 
-            // Clean up existing map
+            // Clean up existing map and markers
             if (mapInstanceRef.current) {
                 mapInstanceRef.current.remove();
                 mapInstanceRef.current = null;
             }
+
+            markersRef.current = [];
+            geocodingQueueRef.current = [];
 
             if (mapRef.current) {
                 mapRef.current.innerHTML = '';
@@ -215,37 +257,58 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
             const map = MapUtilities.initializeMapContainer(mapRef);
             mapInstanceRef.current = map;
 
-            // Apply map size invalidation
-            MapUtilities.invalidateMapSize(map);
+            // Apply aggressive map invalidation (similar to OpenStreetMap.tsx)
+            map.invalidateSize(true);
 
-            map.whenReady(async () => {
+            // Multiple invalidations with timeouts
+            const invalidateMapAggressively = () => {
+                if (mapInstanceRef.current) {
+                    mapInstanceRef.current.invalidateSize(true);
+                    const container = mapInstanceRef.current.getContainer();
+                    if (container) {
+                        // Force browser repaint
+                        const width = container.offsetWidth;
+                        const height = container.offsetHeight;
+                        console.log(`Map container size: ${width}x${height}`);
+                    }
+                }
+            };
+
+            // Multiple invalidations at different times
+            setTimeout(invalidateMapAggressively, 100);
+            setTimeout(invalidateMapAggressively, 300);
+            setTimeout(invalidateMapAggressively, 500);
+
+            map.whenReady(() => {
                 try {
-                    MapUtilities.invalidateMapSize(map);
-
-                    const validCoordinates: [number, number][] = [];
+                    // Separate properties with and without coordinates
+                    const propertiesWithCoords: RealEstate[] = [];
                     const propertiesWithoutCoords: RealEstate[] = [];
+                    const validCoordinates: [number, number][] = [];
 
-                    // Process properties with coordinates first (instant)
-                    for (const estate of realEstates) {
+                    // First pass: only process properties with coordinates
+                    realEstates.forEach(estate => {
                         const { latitude, longitude } = estate.locality;
-
                         if (latitude && longitude) {
-                            const location: [number, number] = [latitude, longitude];
-                            validCoordinates.push(location);
-                            createMarkerForEstate(estate, location, map);
+                            propertiesWithCoords.push(estate);
+                            validCoordinates.push([latitude, longitude]);
+                            createMarkerForEstate(estate, [latitude, longitude], map);
                         } else {
                             propertiesWithoutCoords.push(estate);
                         }
-                    }
+                    });
+
+                    // Queue properties without coordinates for background processing
+                    geocodingQueueRef.current = propertiesWithoutCoords;
 
                     // Show map immediately with properties that have coordinates
                     if (validCoordinates.length > 0) {
                         try {
-                            // Ensure map is properly initialized before manipulating the view
+                            // Give the map a moment to stabilize
                             setTimeout(() => {
                                 if (!mapInstanceRef.current) return;
 
-                                // Ensure the map container is properly sized before fitting bounds
+                                // Force size invalidation again
                                 mapInstanceRef.current.invalidateSize(true);
 
                                 if (validCoordinates.length === 1) {
@@ -256,7 +319,7 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
                                         mapInstanceRef.current.fitBounds(bounds, {
                                             padding: [50, 50],
                                             maxZoom: 15,
-                                            animate: false // Disable animation to prevent timing issues
+                                            animate: false // Disable animation for better performance
                                         });
                                     } catch (err) {
                                         console.warn('Error fitting bounds, falling back to default view:', err);
@@ -293,85 +356,17 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
                         }
                     });
 
-                    // Stop loading indicator now - map is ready with coordinate-based properties
+                    // Map is loaded with coordinate-based properties, mark as ready
                     setLoading(false);
 
-                    // Geocode properties without coordinates in the background (non-blocking)
-                    if (propertiesWithoutCoords.length > 0) {
-                        // Process geocoding in batches to avoid overwhelming the API
-                        const batchSize = 3;
-                        const batches: RealEstate[][] = [];
-                        for (let i = 0; i < propertiesWithoutCoords.length; i += batchSize) {
-                            batches.push(propertiesWithoutCoords.slice(i, i + batchSize));
-                        }
-
-                        // Process each batch with delays to be API-friendly
-                        const processBatches = async () => {
-                            for (const batch of batches) {
-                                const geocodePromises = batch.map(async (estate: RealEstate) => {
-                                    try {
-                                        const location = await MapUtilities.geocodeAddress(estate.locality);
-                                        if (location && mapInstanceRef.current) {
-                                            validCoordinates.push(location);
-                                            createMarkerForEstate(estate, location, mapInstanceRef.current);
-
-                                            // Update map view safely
-                                            if (mapInstanceRef.current) {
-                                                try {
-                                                    // Only if this is the first marker and we previously had none
-                                                    if (validCoordinates.length === 1) {
-                                                        // Use timeout to ensure map is ready
-                                                        setTimeout(() => {
-                                                            if (mapInstanceRef.current) {
-                                                                mapInstanceRef.current.setView(location, 15);
-                                                            }
-                                                        }, 100);
-                                                    } else if (validCoordinates.length > 1) {
-                                                        // Only re-fit bounds if we have multiple properties and this significantly changes the view
-                                                        setTimeout(() => {
-                                                            if (!mapInstanceRef.current) return;
-
-                                                            try {
-                                                                const bounds = L.latLngBounds(validCoordinates);
-                                                                const currentBounds = mapInstanceRef.current.getBounds();
-
-                                                                // Only adjust view if new point is outside current bounds
-                                                                if (!currentBounds.contains(bounds)) {
-                                                                    mapInstanceRef.current.fitBounds(bounds, {
-                                                                        padding: [50, 50],
-                                                                        maxZoom: 15,
-                                                                        animate: false // Disable animation to avoid issues
-                                                                    });
-                                                                }
-                                                            } catch (err) {
-                                                                console.warn('Error updating bounds with geocoded property:', err);
-                                                            }
-                                                        }, 100);
-                                                    }
-                                                } catch (err) {
-                                                    console.warn('Error updating map with geocoded property:', err);
-                                                }
-                                            }
-                                        }
-                                    } catch (error) {
-                                        console.warn(`Failed to geocode address for property ${estate.id}:`, error);
-                                    }
-                                });
-
-                                // Wait for current batch to complete
-                                await Promise.all(geocodePromises);
-
-                                // Add a small delay between batches to be respectful to the geocoding API
-                                if (batches.indexOf(batch) < batches.length - 1) {
-                                    await new Promise(resolve => setTimeout(resolve, 500));
-                                }
-                            }
-                        };
-
-                        // Start background processing
-                        processBatches().catch(err => {
-                            console.warn('Error in background geocoding:', err);
-                        });
+                    // Start background geocoding AFTER the map is shown
+                    if (geocodingQueueRef.current.length > 0) {
+                        // Slight delay to ensure map is fully rendered
+                        setTimeout(() => {
+                            processGeocodingQueue().catch(err => {
+                                console.warn('Background geocoding error:', err);
+                            });
+                        }, 1000);
                     }
                 } catch (err) {
                     console.error('Error during map initialization:', err);
@@ -395,6 +390,8 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
                 mapInstanceRef.current.remove();
                 mapInstanceRef.current = null;
             }
+            markersRef.current = [];
+            geocodingQueueRef.current = [];
         };
     }, [realEstates]);
 
