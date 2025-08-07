@@ -5,6 +5,7 @@ import { useRealEstate } from '../context/RealEstateContext';
 import { RealEstate, Duplicate } from '../types/realEstate';
 import { ArrowLeft, GeoAlt, Houses, CardImage, Info, Link as LinkIcon, MapFill } from 'react-bootstrap-icons';
 import { fetchRealEstateById } from '../services/RealEstateService';
+import OpenStreetMap from '../components/OpenStreetMap';
 
 interface RealEstateDetailProps {
   token?: string;
@@ -17,7 +18,6 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
   const [realEstate, setRealEstate] = useState<RealEstate | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const MAPY_API_KEY = '' // will always be visible for all users...
 
   useEffect(() => {
     if (id) {
@@ -100,188 +100,6 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
     if (city) parts.push(city);
 
     return parts.join(', ');
-  };
-
-  // Generate mapy.com embedded map HTML for property location
-  const getEmbeddedMapHtml = (estate: RealEstate): string => {
-    const { latitude, longitude, city, district, street, streetNumber } = estate.locality;
-
-    // If we have coordinates, create embedded map with marker
-    if (latitude && longitude) {
-      return `
-        <!DOCTYPE html>
-        <html lang="cs">
-        <head>
-          <script src="https://api.mapy.cz/loader.js"></script>
-          <style>
-            html, body, #mapContainer {
-              margin: 0;
-              padding: 0;
-              width: 100%;
-              height: 450px;
-            }
-          </style>
-        </head>
-        <body>
-          <div id="mapContainer"></div>
-          <script>
-            Loader.async = true;
-            Loader.load(null, {
-              apikey: '${MAPY_API_KEY}'
-            }, function(api) {
-              try {
-                var center = SMap.Coords.fromWGS84(${longitude}, ${latitude});
-                var map = new SMap(JAK.gel('mapContainer'), center, 17);
-                
-                // Add base layer
-                map.addDefaultLayer(SMap.DEF_BASE).enable();
-                
-                // Add controls
-                map.addDefaultControls();
-                
-                // Create marker layer
-                var markerLayer = new SMap.Layer.Marker();
-                map.addLayer(markerLayer);
-                markerLayer.enable();
-                
-                // Add marker
-                var marker = new SMap.Marker(center, "Property Location", {});
-                markerLayer.addMarker(marker);
-                
-                console.log('Map loaded successfully');
-              } catch (error) {
-                console.error('Error creating map:', error);
-                document.getElementById('mapContainer').innerHTML = 
-                  '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;color:#6c757d;font-family:Arial,sans-serif;">Map could not be loaded</div>';
-              }
-            }, function(error) {
-              console.error('Error loading Mapy API:', error);
-              document.getElementById('mapContainer').innerHTML = 
-                '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;color:#6c757d;font-family:Arial,sans-serif;">Map API could not be loaded</div>';
-            });
-          </script>
-        </body>
-        </html>
-      `;
-    }
-
-    // Fallback for address-based location
-    const addressParts = [];
-    if (street) addressParts.push(street);
-    if (streetNumber) addressParts.push(streetNumber);
-    if (district) addressParts.push(district);
-    if (city) addressParts.push(city);
-
-    const address = addressParts.join(' ');
-    const searchQuery = address || city || 'Czech Republic';
-
-    return `
-      <!DOCTYPE html>
-      <html lang="cs">
-      <head>
-        <script src="https://api.mapy.cz/loader.js"></script>
-        <style>
-          html, body, #mapContainer {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 450px;
-          }
-        </style>
-      </head>
-      <body>
-        <div id="mapContainer"></div>
-        <script>
-          Loader.async = true;
-          Loader.load(null, {
-            apikey: '${MAPY_API_KEY}'
-          }, function(api) {
-            try {
-              // Default center (Prague)
-              var defaultCenter = SMap.Coords.fromWGS84(14.4378, 50.0755);
-              var map = new SMap(JAK.gel('mapContainer'), defaultCenter, 12);
-              
-              // Add base layer and controls
-              map.addDefaultLayer(SMap.DEF_BASE).enable();
-              map.addDefaultControls();
-              
-              // Create marker layer
-              var markerLayer = new SMap.Layer.Marker();
-              map.addLayer(markerLayer);
-              markerLayer.enable();
-              
-              // Use geocoding to find the address
-              var geocoder = new SMap.Geocoder("${searchQuery.replace(/"/g, '\\"')}", function(geocoder) {
-                if (!geocoder.getResults()[0]) {
-                  console.log("No results found for: ${searchQuery.replace(/"/g, '\\"')}");
-                  // Fallback: try with just the city
-                  var cityGeocoder = new SMap.Geocoder("${city || 'Prague'}", function(cityGeocoder) {
-                    if (cityGeocoder.getResults()[0]) {
-                      var result = cityGeocoder.getResults()[0];
-                      var coords = result.getCoords();
-                      map.setCenter(coords, true);
-                      map.setZoom(13);
-                      
-                      var marker = new SMap.Marker(coords, "Area: " + "${city || 'Prague'}", {});
-                      markerLayer.addMarker(marker);
-                    }
-                  });
-                } else {
-                  var result = geocoder.getResults()[0];
-                  var coords = result.getCoords();
-                  
-                  // Center map on found location
-                  map.setCenter(coords, true);
-                  map.setZoom(16);
-                  
-                  // Add marker at found location
-                  var marker = new SMap.Marker(coords, "Property Location: " + result.getLabel(), {});
-                  markerLayer.addMarker(marker);
-                  
-                  console.log("Added marker at:", coords.toString());
-                }
-              });
-              
-              console.log('Map loaded successfully');
-            } catch (error) {
-              console.error('Error creating map:', error);
-              document.getElementById('mapContainer').innerHTML = 
-                '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;color:#6c757d;font-family:Arial,sans-serif;">Map could not be loaded</div>';
-            }
-          }, function(error) {
-            console.error('Error loading Mapy API:', error);
-            document.getElementById('mapContainer').innerHTML = 
-              '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;color:#6c757d;font-family:Arial,sans-serif;">Map API could not be loaded</div>';
-          });
-        </script>
-      </body>
-      </html>
-    `;
-  };
-
-  // Generate external mapy.cz URL for opening in new tab
-  const getExternalMapUrl = (estate: RealEstate): string => {
-    const { latitude, longitude, city, district, street, streetNumber } = estate.locality;
-
-    // If we have coordinates, use them directly
-    if (latitude && longitude) {
-      return `https://mapy.com/zakladni?x=${longitude}&y=${latitude}&z=17&bod=${longitude},${latitude}&q=${longitude},${latitude}`;
-    }
-
-    // Fallback to address-based search
-    const addressParts = [];
-    if (street) addressParts.push(street);
-    if (streetNumber) addressParts.push(streetNumber);
-    if (district) addressParts.push(district);
-    if (city) addressParts.push(city);
-
-    const address = addressParts.join(' ');
-    if (address) {
-      return `https://mapy.com/zakladni?q=${encodeURIComponent(address)}`;
-    }
-
-    // Final fallback to city only
-    return city ? `https://mapy.com/zakladni?q=${encodeURIComponent(city)}` : 'https://mapy.com/zakladni';
   };
 
   // Render property details in a table
@@ -734,30 +552,6 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
       <div className="location-map-container">
         <Row className="mb-4">
           <Col>
-            <Alert variant="info" className="mb-4">
-              <div className="d-flex align-items-center">
-                <MapFill className="me-2" />
-                <div>
-                  <strong>Property Location</strong>
-                  <div className="mt-1">
-                    {hasCoordinates ? (
-                      <>
-                        Exact location available (Coordinates: {latitude?.toFixed(6)}, {longitude?.toFixed(6)})
-                      </>
-                    ) : (
-                      <>
-                        Location shown based on address: {addressString || city || 'City information'}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Alert>
-          </Col>
-        </Row>
-
-        <Row className="mb-4">
-          <Col>
             <Card className="modern-card">
               <Card.Header className="bg-transparent border-0 py-3">
                 <div className="d-flex align-items-center justify-content-between">
@@ -768,26 +562,17 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
                   <Button
                     variant="outline-primary"
                     size="sm"
-                    href={getExternalMapUrl(estate)}
+                    href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(addressString || city || '')}`}
                     target="_blank"
                     className="modern-btn"
                   >
                     <i className="fas fa-external-link-alt me-2"></i>
-                    Open in Mapy.cz
+                    Open in OSM
                   </Button>
                 </div>
               </Card.Header>
               <Card.Body className="p-0">
-                <div className="map-container" style={{ height: '450px', position: 'relative' }}>
-                  <iframe
-                    srcDoc={getEmbeddedMapHtml(estate)}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 'none', borderRadius: '0 0 0.375rem 0.375rem' }}
-                    title="Property Location Map"
-                    loading="lazy"
-                  />
-                </div>
+                <OpenStreetMap realEstate={estate} height="450px" />
               </Card.Body>
             </Card>
           </Col>
@@ -824,56 +609,6 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
                   {district && <div><strong>District:</strong> {district}</div>}
                   {street && <div><strong>Street:</strong> {street} {streetNumber || ''}</div>}
                 </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-
-        <Row className="mt-4">
-          <Col>
-            <Card className="modern-card">
-              <Card.Body className="p-4">
-                <h6 className="mb-3">
-                  <i className="fas fa-info-circle me-2 text-primary"></i>
-                  Map Information
-                </h6>
-                <Row className="g-3">
-                  <Col md={4}>
-                    <div className="d-flex align-items-center">
-                      <div className="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style={{width: '40px', height: '40px'}}>
-                        <i className="fas fa-crosshairs text-success"></i>
-                      </div>
-                      <div>
-                        <div className="fw-medium">Precision</div>
-                        <small className="text-muted">
-                          {hasCoordinates ? 'Exact coordinates' : 'Address-based'}
-                        </small>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={4}>
-                    <div className="d-flex align-items-center">
-                      <div className="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style={{width: '40px', height: '40px'}}>
-                        <i className="fas fa-map text-info"></i>
-                      </div>
-                      <div>
-                        <div className="fw-medium">Map Provider</div>
-                        <small className="text-muted">Mapy.cz</small>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={4}>
-                    <div className="d-flex align-items-center">
-                      <div className="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style={{width: '40px', height: '40px'}}>
-                        <i className="fas fa-expand-arrows-alt text-warning"></i>
-                      </div>
-                      <div>
-                        <div className="fw-medium">Interactive</div>
-                        <small className="text-muted">Zoom & pan available</small>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
               </Card.Body>
             </Card>
           </Col>

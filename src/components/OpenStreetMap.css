@@ -1,0 +1,135 @@
+/*!* OpenStreetMap component styles - Fixed for proper tile rendering *!*/
+
+/*!* Main container styling - ensure proper dimensions *!*/
+.leaflet-container {
+  background: #ddd;
+  outline: 0;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative;
+}
+
+/*!* Ensure tiles render properly *!*/
+.leaflet-tile-container {
+  pointer-events: auto;
+}
+
+.leaflet-tile {
+  filter: inherit;
+  visibility: inherit;
+  opacity: 1;
+  image-rendering: auto;
+  /* Ensure tiles display correctly */
+  display: block !important;
+}
+
+/*!* Fix for tile loading issues *!*/
+.leaflet-layer,
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out,
+.leaflet-control-attribution {
+  filter: inherit;
+}
+
+/*!* Critical fix: Ensure tile pane renders correctly *!*/
+.leaflet-tile-pane {
+  z-index: 2;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.leaflet-overlay-pane {
+  z-index: 4;
+}
+
+/*!* Fix for gray tiles by ensuring proper container size *!*/
+.map-container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+/*!* Fix for marker icons *!*/
+/*.leaflet-marker-icon {*/
+/*  margin-left: -12px;*/
+/*  margin-top: -41px;*/
+/*}*/
+
+/*.leaflet-marker-shadow {*/
+/*  margin-left: -12px;*/
+/*  margin-top: -41px;*/
+/*}*/
+
+/*!* Fix map pane positioning - critical for tile rendering *!*/
+/*.leaflet-map-pane {*/
+/*  left: 0;*/
+/*  top: 0;*/
+/*  width: 100%;*/
+/*  height: 100%;*/
+/*  position: absolute;*/
+/*  !* Removed !important rules that break tile calculations *!*/
+/*}*/
+
+/*!* Ensure proper image rendering *!*/
+/*.leaflet-container img {*/
+/*  max-width: none;*/
+/*  max-height: none;*/
+/*  !* Allow Leaflet to control image dimensions *!*/
+/*}*/
+
+/*.leaflet-container img.leaflet-image-layer {*/
+/*  max-width: 15000px;*/
+/*  max-height: 15000px;*/
+/*}*/
+
+/*!* Fix for zoom and attribution controls positioning *!*/
+/*.leaflet-control-container {*/
+/*  pointer-events: none;*/
+/*}*/
+
+/*.leaflet-control {*/
+/*  pointer-events: auto;*/
+/*}*/
+
+/*!* Additional fixes for tile rendering *!*/
+/*.leaflet-tile-loaded {*/
+/*  visibility: inherit;*/
+/*  opacity: 1;*/
+/*}*/
+
+/*!* Ensure map container has proper box-sizing *!*/
+/*.leaflet-container,*/
+/*.leaflet-container * {*/
+/*  box-sizing: content-box;*/
+/*}*/
+
+/*!* Loading state styling *!*/
+/*.map-loading {*/
+/*  display: flex;*/
+/*  align-items: center;*/
+/*  justify-content: center;*/
+/*  background: #f5f5f5;*/
+/*  color: #666;*/
+/*  font-size: 14px;*/
+/*}*/
+
+/*!* Error state styling *!*/
+/*.map-error {*/
+/*  display: flex;*/
+/*  align-items: center;*/
+/*  justify-content: center;*/
+/*  background: #fee;*/
+/*  color: #c33;*/
+/*  font-size: 14px;*/
+/*  border: 1px solid #fcc;*/
+/*  border-radius: 4px;*/
+/*}*/
+
+/*!* Wrapper to ensure proper sizing *!*/
+/*.map-wrapper {*/
+/*  width: 100%;*/
+/*  height: 100%;*/
+/*  position: relative;*/
+/*  overflow: hidden;*/
+/*}*/
