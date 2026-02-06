@@ -8,6 +8,7 @@ import ReceivedNotifications from '../pages/ReceivedNotifications';
 import Notifications from '../pages/Notifications';
 import RealEstates from '../pages/RealEstates';
 import RealEstateDetail from '../pages/RealEstateDetail';
+import Stats from '../pages/Stats';
 import {Navbar, Button} from 'react-bootstrap';
 import {List} from 'react-bootstrap-icons';
 import {useAuth} from '../context/AuthContext';
@@ -93,6 +94,7 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
               <Route path="/dashboard" element={<AdminRoute element={<Dashboard token={token || ''}/>}/>}/>
               <Route path="/real-estates" element={<RealEstates token={token || ''}/>}/>
               <Route path="/real-estates/:id" element={<RealEstateDetail token={token || ''}/>}/>
+              <Route path="/stats" element={<Stats />}/>
               <Route path="/settings" element={<Settings token={token || ''}/>}/>
               <Route path="/sent-notifications" element={<ReceivedNotifications token={token || ''}/>}/>
               <Route path="/notifications" element={<Notifications token={token || ''}/>}/>

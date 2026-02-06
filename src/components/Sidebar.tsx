@@ -53,6 +53,12 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       description: 'Browse Properties'
     },
     {
+      path: '/stats',
+      label: 'Market Stats',
+      icon: 'fas fa-chart-bar',
+      description: 'Price Trends & Analytics'
+    },
+    {
       path: '/sent-notifications',
       label: 'Received Notifications',
       icon: 'fas fa-inbox',
