@@ -5,10 +5,7 @@ import {
   AddNotificationCommand
 } from '../types/notifications';
 
-// API base URL from environment variable with fallback to localhost
-// export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
-export const API_BASE_URL = 'https://reality.havasi.me';
-// export const API_BASE_URL = 'http://localhost:8080';
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://reality.havasi.me';
 
 // Callback function to handle logout when token expires
 let onTokenExpired: (() => void) | null = null;
