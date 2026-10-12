@@ -552,6 +552,11 @@ a {
   color: var(--app-text-3);
 }
 
+.sidebar-divider {
+  margin: 1.25rem 1.25rem 0;
+  border-top: 1px solid var(--app-border);
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -755,6 +760,23 @@ a {
 .chip-positive {
   background: var(--app-positive-soft);
   color: var(--app-positive);
+}
+
+.chip-negative {
+  background: var(--app-negative-soft);
+  color: var(--app-negative);
+}
+
+.chip .spinner-border {
+  width: 0.6875rem;
+  height: 0.6875rem;
+  color: currentColor;
+}
+
+.job-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 0.75rem;
 }
 
 .count-badge {

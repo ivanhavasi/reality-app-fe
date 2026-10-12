@@ -9,6 +9,7 @@ import Notifications from '../pages/Notifications';
 import RealEstates from '../pages/RealEstates';
 import RealEstateDetail from '../pages/RealEstateDetail';
 import Stats from '../pages/Stats';
+import Admin from '../pages/Admin';
 import {Button} from 'react-bootstrap';
 import {List} from 'react-bootstrap-icons';
 import {Link} from 'react-router-dom';
@@ -59,6 +60,7 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
               <Route path="/settings" element={<Settings token={token || ''}/>}/>
               <Route path="/sent-notifications" element={<ReceivedNotifications token={token || ''}/>}/>
               <Route path="/notifications" element={<Notifications token={token || ''}/>}/>
+              <Route path="/admin" element={<AdminRoute element={<Admin />}/>}/>
               <Route path="*" element={<Navigate to="/" />}/>
             </Routes>
           )}

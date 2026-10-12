@@ -64,6 +64,7 @@ The app uses `react-router-dom` v7 with conditional rendering based on authentic
   - `/notifications`: User's notification settings
   - `/sent-notifications`: Notifications received by the user
   - `/settings`: User settings
+  - `/admin` (admins only, own "Admin" sidebar section): Data jobs, starts scrapes and the coordinates backfill on the backend and polls `/api/admin/jobs` while one runs
 
 ### Layout Components
 

@@ -1,7 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
-import { BarChartLine, Bell, BoxArrowRight, Gear, Grid1x2, HouseDoor, Inbox } from 'react-bootstrap-icons';
+import { BarChartLine, Bell, BoxArrowRight, DatabaseGear, Gear, Grid1x2, HouseDoor, Inbox } from 'react-bootstrap-icons';
 import type { Icon } from 'react-bootstrap-icons';
 import { useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
@@ -62,6 +62,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
           <div className="sidebar-label">Alerts</div>
           <nav className="sidebar-nav">{alertItems.map(renderLink)}</nav>
+
+          {isAdmin && (
+            <>
+              <div className="sidebar-divider" />
+              <div className="sidebar-label">Admin</div>
+              <nav className="sidebar-nav">{renderLink({ to: '/admin', label: 'Data jobs', icon: DatabaseGear })}</nav>
+            </>
+          )}
         </div>
 
         <div className="sidebar-footer">
