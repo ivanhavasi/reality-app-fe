@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Spinner, Card, Button, Pagination, Badge, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { Button } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import { Bell, Building, ChevronLeft, ChevronRight, Inbox } from 'react-bootstrap-icons';
 import { fetchNotifications } from '../services/api';
 import { userService } from '../services/UserService';
+import { BUILDING_TYPE_META, BuildingType, isBuildingType } from '../types/property';
+import { formatPrice, typeLabel } from '../utils/format';
+import { EmptyState, ListingImage, ListingSkeletonGrid, PageHeader } from '../components/ui';
 
 interface SentNotificationRealEstate {
   id: string;
@@ -12,6 +16,9 @@ interface SentNotificationRealEstate {
   city: string;
   image: string;
   provider: string;
+  // not sent by the backend yet; older sent notifications will never have them
+  mainCategory?: BuildingType | null;
+  subCategory?: string | null;
 }
 
 interface SentNotification {
@@ -29,18 +36,15 @@ interface ReceivedNotificationsProps {
 const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<SentNotification[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   // Always assume there are more pages until proven otherwise
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const limit = 20;
-  const defaultImage = 'https://via.placeholder.com/150?text=Image+Not+Available';
 
   // Use a single useEffect for data fetching that depends only on currentPage and token
   useEffect(() => {
     const fetchData = async () => {
-      if (loading) return;
-
       setLoading(true);
 
       try {
@@ -62,9 +66,8 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
         // Always replace notifications with new page data
         setNotifications(newNotifications);
         
-        // If we got no results, definitely no more pages
-        // Otherwise, assume there might be more until proven otherwise
-        setHasMore(newNotifications.length > 0);
+        // a short page means this was the last one
+        setHasMore(newNotifications.length === limit);
       } catch (error) {
         console.error('Failed to fetch notifications', error);
         // In case of error, don't change hasMore state
@@ -87,179 +90,96 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
     setCurrentPage((prevPage) => prevPage - 1);
   };
 
-  const handleRealEstateClick = (realEstateId: string) => {
-    navigate(`/real-estates/${realEstateId}`);
-  };
+  const formatSentAt = (value: string) =>
+    new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <Container fluid className="p-0">
-      {/* Modern Header Section */}
-      <div className="gradient-header py-4 py-md-5 mb-4">
-        <Container>
-          <Row className="align-items-center">
-            <Col>
-              <h1 className="display-6 display-md-4 fw-bold text-white mb-2 mb-md-3">
-                Your Property Alerts
-              </h1>
-              <p className="text-white opacity-90 mb-0 fs-6">
-                Stay updated with the latest property notifications matching your preferences
-              </p>
-            </Col>
-            <Col xs="auto">
-              <div className="d-flex align-items-center text-white">
-                <i className="fas fa-bell fa-2x me-3 opacity-75"></i>
-                <div>
-                  <div className="fs-4 fw-bold">{notifications.length}</div>
-                  <small className="opacity-90">Notifications</small>
-                </div>
-              </div>
-            </Col>
-          </Row>
-        </Container>
-      </div>
+    <>
+      <PageHeader
+        title="Matches"
+        subtitle="Listings your alerts have sent you, newest first"
+        actions={
+          <Button variant="outline-secondary" onClick={() => navigate('/notifications')}>
+            <Bell size={14} />
+            Manage alerts
+          </Button>
+        }
+      />
 
-      <Container>
-        {/* Loading State */}
-        {loading && (
-          <div className="loading-container">
-            <Spinner animation="border" role="status">
-              <span className="visually-hidden">Loading notifications...</span>
-            </Spinner>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && notifications.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <i className="fas fa-bell-slash"></i>
-            </div>
-            <h3>No Notifications Yet</h3>
-            <p className="text-muted">
-              You haven't received any property notifications yet. Set up alerts to get notified about new listings!
-            </p>
-            <Button variant="primary" className="modern-btn" href="/notifications">
-              <i className="fas fa-plus me-2"></i>
-              Create Notifications
-            </Button>
-          </div>
-        )}
-
-        {/* Notifications Grid */}
-        {!loading && notifications.length > 0 && (
-          <>
-            <Row className="mb-4">
-              <Col>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h4 className="mb-0">Recent Notifications</h4>
-                  <Badge bg="primary" className="fs-6 px-3 py-2">
-                    {notifications.length} Total
-                  </Badge>
-                </div>
-              </Col>
-            </Row>
-
-            <Row className="g-4">
-              {notifications.map((notification) => (
-                <Col key={notification.notificationId} sm={6} lg={4} xl={3}>
-                  <Card
-                    className="real-estate-card h-100"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleRealEstateClick(notification.realEstate.id)}
-                  >
-                    {/* Property Image */}
-                    <div className="position-relative">
-                      <Card.Img
-                        variant="top"
-                        src={notification.realEstate.image || defaultImage}
-                        alt={notification.realEstate.name}
-                        className="card-img-top"
-                        style={{ height: '200px', objectFit: 'cover' }}
-                      />
-                      <Badge
-                        bg="success"
-                        className="position-absolute top-0 start-0 m-2"
-                      >
-                        {notification.type}
-                      </Badge>
-                      <Badge
-                        bg="secondary"
-                        className="position-absolute top-0 end-0 m-2"
-                      >
-                        {notification.realEstate.provider}
-                      </Badge>
-                    </div>
-
-                    <Card.Body className="d-flex flex-column">
-                      <Card.Title className="h6 mb-2 line-clamp-2">
-                        {notification.realEstate.name}
-                      </Card.Title>
-
-                      <div className="d-flex align-items-center text-muted mb-2">
-                        <i className="fas fa-map-marker-alt me-1"></i>
-                        <small className="line-clamp-1">
-                          {notification.realEstate.city}
-                        </small>
-                      </div>
-
-                      <div className="mt-auto">
-                        <div className="price-badge py-1 px-2 mb-2 text-center">
-                          <div className="fw-bold">
-                            {notification.realEstate.price.toLocaleString()} Kč
-                          </div>
-                        </div>
-
-                        <div className="d-flex justify-content-between align-items-center">
-                          <small className="text-muted">
-                            {new Date(notification.sentAt).toLocaleDateString()}
-                          </small>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            className="modern-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRealEstateClick(notification.realEstate.id);
-                            }}
-                          >
-                            <i className="fas fa-eye me-1"></i>
-                            View
-                          </Button>
-                        </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-
-            {/* Pagination */}
-            {hasMore && (
-              <div className="d-flex justify-content-center mt-5">
-                <Button
-                  variant="primary"
-                  className="modern-btn px-4 py-2"
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                  disabled={loading}
+      {loading ? (
+        <ListingSkeletonGrid />
+      ) : notifications.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title={currentPage > 1 ? 'No more matches' : 'No matches yet'}
+          text={
+            currentPage > 1
+              ? "You've reached the end of your match history."
+              : "When a new listing fits one of your alerts, it'll show up here."
+          }
+          actions={
+            currentPage > 1 ? (
+              <Button variant="outline-secondary" onClick={handlePreviousPage}>
+                <ChevronLeft size={14} />
+                Previous page
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={() => navigate('/notifications')}>
+                Set up an alert
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <>
+          <div className="listing-grid">
+            {notifications.map((notification) => {
+              const estate = notification.realEstate;
+              const TypeIcon = isBuildingType(estate.mainCategory) ? BUILDING_TYPE_META[estate.mainCategory].icon : Building;
+              return (
+                <Link
+                  key={`${notification.notificationId}-${estate.id}-${notification.sentAt}`}
+                  to={`/real-estates/${estate.id}`}
+                  className="listing-card"
                 >
-                  {loading ? (
-                    <>
-                      <Spinner size="sm" className="me-2" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-chevron-down me-2"></i>
-                      Load More
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </Container>
-    </Container>
+                  <ListingImage src={estate.image} alt={estate.name} fallbackIcon={TypeIcon}>
+                    <div className="listing-tags">
+                      <span className="media-tag">{estate.provider}</span>
+                    </div>
+                  </ListingImage>
+                  <div className="listing-body">
+                    <div className="listing-price">{formatPrice(estate.price)}</div>
+                    <div className="listing-title line-clamp-1" title={estate.name}>{estate.name}</div>
+                    <div className="listing-meta">
+                      {[estate.mainCategory ? typeLabel(estate.mainCategory, estate.subCategory) : null, estate.city]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
+                    <div className="listing-meta text-3">
+                      Sent {formatSentAt(notification.sentAt)} via {notification.type.toLowerCase()}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {(currentPage > 1 || hasMore) && (
+            <div className="d-flex align-items-center justify-content-center gap-3 mt-5">
+              <Button variant="outline-secondary" onClick={handlePreviousPage} disabled={currentPage === 1}>
+                <ChevronLeft size={14} />
+                Previous
+              </Button>
+              <span className="text-2 tabular" style={{ fontSize: '0.875rem' }}>Page {currentPage}</span>
+              <Button variant="outline-secondary" onClick={handleNextPage} disabled={!hasMore}>
+                Next
+                <ChevronRight size={14} />
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </>
   );
 };
 

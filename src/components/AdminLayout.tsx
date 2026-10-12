@@ -1,4 +1,4 @@
-import {Navigate, Route, Routes} from 'react-router-dom';
+import {Navigate, Route, Routes, useLocation} from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Dashboard from '../pages/Dashboard';
 import Settings from '../pages/Settings';
@@ -9,85 +9,46 @@ import Notifications from '../pages/Notifications';
 import RealEstates from '../pages/RealEstates';
 import RealEstateDetail from '../pages/RealEstateDetail';
 import Stats from '../pages/Stats';
-import {Navbar, Button} from 'react-bootstrap';
+import {Button} from 'react-bootstrap';
 import {List} from 'react-bootstrap-icons';
+import {Link} from 'react-router-dom';
 import {useAuth} from '../context/AuthContext';
-import {useState, useEffect} from 'react';
+import {useEffect, useState} from 'react';
+import {BrandMark} from './ui';
 
 const AdminLayout = ({children}: { children?: React.ReactNode }) => {
   const {token} = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Check if we're on mobile and adjust sidebar behavior
   useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth <= 768;
-      setIsMobile(mobile);
-      if (mobile) {
-        setSidebarOpen(false); // Close sidebar by default on mobile
-      }
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const closeSidebar = () => {
     setSidebarOpen(false);
-  };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => e.key === 'Escape' && setSidebarOpen(false);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen]);
 
   return (
-    <div className="d-flex flex-column" style={{minHeight: '100vh'}}>
-      {/* Modern Navbar with gradient - Fixed position to stay above sidebar */}
-      <Navbar
-        data-bs-theme="dark"
-        expand="lg"
-        className="px-3 px-md-4 shadow-sm position-fixed w-100"
-        style={{
-          background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-          borderBottom: 'none',
-          zIndex: 1050, // Higher than sidebar to stay on top
-          top: 0
-        }}
-      >
-        <div className="d-flex align-items-center">
-          <Button
-            variant="light"
-            onClick={toggleSidebar}
-            className="me-2 me-md-3 shadow-sm"
-            size="sm"
-            data-sidebar-toggle
-          >
-            <List />
-          </Button>
-          <Navbar.Brand className="fw-bold fs-6 fs-md-5 text-white d-flex align-items-center">
-            🏠 <span className="ms-2">Havasi Reality Platform</span>
-          </Navbar.Brand>
-        </div>
-      </Navbar>
+    <>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {sidebarOpen && <div className="app-backdrop d-lg-none" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
 
-      {/* Main content area with top padding for fixed navbar */}
-      <div className="d-flex flex-grow-1 overflow-hidden" style={{ paddingTop: '70px' }}>
-        <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-        <div
-          className="flex-grow-1 p-2 p-md-4"
-          style={{
-            overflow: 'auto',
-            overflowX: 'hidden',
-            background: 'var(--bs-body-bg)',
-            // Add left margin for fixed sidebar on desktop
-            marginLeft: window.innerWidth > 768 ? (sidebarOpen ? '280px' : '0') : '0',
-            transition: 'margin-left 0.3s ease',
-            // Mobile doesn't need margin since sidebar is overlay
-            ...(isMobile ? { marginLeft: '0' } : {})
-          }}
-        >
+      <div className="app-main">
+        <header className="app-topbar">
+          <Button variant="ghost" className="btn-icon" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+            <List size={20} />
+          </Button>
+          <Link to="/" className="brand">
+            <BrandMark size={24} />
+            Havasi Reality
+          </Link>
+        </header>
+
+        <main className="app-content">
           {children || (
             <Routes>
               <Route path="/" element={<RootRedirect />}/>
@@ -98,11 +59,12 @@ const AdminLayout = ({children}: { children?: React.ReactNode }) => {
               <Route path="/settings" element={<Settings token={token || ''}/>}/>
               <Route path="/sent-notifications" element={<ReceivedNotifications token={token || ''}/>}/>
               <Route path="/notifications" element={<Notifications token={token || ''}/>}/>
+              <Route path="*" element={<Navigate to="/" />}/>
             </Routes>
           )}
-        </div>
+        </main>
       </div>
-    </div>
+    </>
   );
 };
 

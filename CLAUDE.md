@@ -67,13 +67,13 @@ The app uses `react-router-dom` v7 with conditional rendering based on authentic
 
 ### Layout Components
 
-- **AdminLayout** (`src/components/AdminLayout.tsx`): Main authenticated layout with fixed navbar, collapsible sidebar, and responsive design. On mobile (<768px), sidebar is an overlay; on desktop, it's fixed and pushes content.
-- **Sidebar** (`src/components/Sidebar.tsx`): Navigation sidebar with theme toggle and logout functionality.
+- **AdminLayout** (`src/components/AdminLayout.tsx`): Main authenticated layout. Fixed sidebar on desktop; below 992px a sticky top bar opens the sidebar as a drawer.
+- **Sidebar** (`src/components/Sidebar.tsx`): Navigation, signed-in user and sign-out.
 - **AdminRoute** (`src/components/AdminRoute.tsx`): Route wrapper that checks authentication.
 
 ### Key UI Patterns
 
-- **Responsive Design**: Mobile-first with breakpoint at 768px. Sidebar behavior changes (overlay vs fixed), and spacing adjusts for small screens.
+- **Responsive Design**: The sidebar becomes a drawer below 992px (`lg`); most grids are CSS `auto-fill` grids defined in `theme.css`.
 - **Bootstrap 5**: Used for layout and components via `react-bootstrap`. Theme support via `data-bs-theme` attribute.
 - **OpenStreetMap Integration**: Real estate locations are displayed using Leaflet (`react-leaflet`) with OpenStreetMap tiles. See `OpenStreetMap.tsx` and `MultiRealEstateMap.tsx`.
 - **Dual Range Sliders**: Custom component (`DualRangeSlider.tsx`) for filtering price and size ranges.
@@ -104,7 +104,7 @@ Errors are displayed via a Toast component (`ErrorToast.tsx`) that subscribes to
 
 ## Styling
 
-- Bootstrap 5 CSS is globally imported in `index.tsx`
-- Custom styles in `modern-styles.css` and `mobile-improvements.css`
+- Bootstrap 5 CSS is imported first in `index.tsx`, then `theme.css`, which holds the design system: `--app-*` color/radius tokens for light and dark (`data-bs-theme` on `<body>`), Bootstrap variable overrides, and all component classes
+- One accent color (`--app-accent`, terracotta) on warm-neutral surfaces; primary buttons are ink (`--app-ink`), not accent. Font is Manrope (Google Fonts, `public/index.html`); icons are `react-bootstrap-icons` only
+- Shared UI pieces live in `src/components/ui.tsx` (`PageHeader`, `Segmented`, `EmptyState`, `ListingImage`, skeletons); map tiles and pins in `src/utils/map.ts`
 - Theme switching (light/dark) is persisted to localStorage with key `'theme'`
-- The app uses CSS-in-JS for component-specific styles (inline `style` props)

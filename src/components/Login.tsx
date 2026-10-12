@@ -1,9 +1,62 @@
+import { useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useGoogleLogin } from '@react-oauth/google';
+import { BarChartLine, Bell, Layers } from 'react-bootstrap-icons';
 import { useAuth } from '../context/AuthContext';
+import { createTileLayer } from '../utils/map';
+import { BrandMark } from './ui';
+
+const DISTRICTS: [number, number][] = [
+  [50.0755, 14.448], [50.0927, 14.451], [50.07, 14.403], [50.103, 14.437], [50.084, 14.46],
+  [50.1, 14.393], [50.064, 14.44], [50.07, 14.465], [50.106, 14.475], [50.084, 14.36],
+  [50.099, 14.425], [50.052, 14.438], [50.087, 14.421], [50.079, 14.43], [50.058, 14.414],
+];
+
+const GoogleLogo = () => (
+  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+  </svg>
+);
+
+const DecorativeMap = () => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const map = L.map(ref.current, {
+      center: [50.083, 14.43],
+      zoom: 13,
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+    });
+    createTileLayer().addTo(map);
+    DISTRICTS.forEach(point =>
+      L.marker(point, {
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({ className: 'location-pin-icon', html: '<span class="location-pin"></span>', iconSize: [20, 20], iconAnchor: [10, 10] }),
+      }).addTo(map),
+    );
+    return () => {
+      map.remove();
+    };
+  }, []);
+
+  return <div ref={ref} aria-hidden="true" />;
+};
 
 const Login = () => {
   const { login } = useAuth();
-  
+
   const googleLogin = useGoogleLogin({
     scope: 'openid email profile',
     onSuccess: async (tokenResponse) => {
@@ -16,142 +69,57 @@ const Login = () => {
   });
 
   return (
-    <div className="min-vh-100">
-      {/* Hero Section */}
-      <div className="py-4 py-md-5" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
-        <div className="container">
-          <div className="row align-items-center">
-            <div className="col-12 col-lg-6 mb-4 mb-lg-0">
-              <h1 className="display-6 display-md-4 fw-bold mb-3 mb-md-4 text-white">
-                Find Your Perfect Apartment in Prague
-              </h1>
-              <p className="mb-3 mb-md-4 fs-6 fs-md-5 text-white">
-                Discover the best apartments for sale and rent in the Prague region.
-                Our comprehensive platform helps you find your dream home with ease.
-              </p>
-              <div className="d-grid d-sm-block">
-                <button
-                  className="btn btn-light btn-lg px-4 py-2 w-100 w-sm-auto shadow"
-                  onClick={() => googleLogin()}
-                >
-                  <i className="fab fa-google me-2 text-primary"></i>
-                  Get Started with Google
-                </button>
-              </div>
-            </div>
-            <div className="col-12 col-lg-6 text-center">
-              <div className="bg-white rounded-3 p-3 p-md-4 shadow">
-                <h3 className="h5 h-md-4 mb-2 mb-md-3 text-primary">🏠 Havasi Reality Platform</h3>
-                <p className="mb-0 text-dark fw-medium">Your gateway to premium properties</p>
-              </div>
-            </div>
-          </div>
+    <div className="auth-page">
+      <div className="auth-panel">
+        <div className="brand">
+          <BrandMark />
+          Havasi Reality
         </div>
+
+        <main className="auth-main">
+          <h1 className="auth-title">Every Prague listing, in one place.</h1>
+          <p className="auth-lead">
+            Apartments and building plots from the major Czech portals, merged into one search, with the
+            same property's prices compared side by side.
+          </p>
+          <div>
+            <button type="button" className="btn-google" onClick={() => googleLogin()}>
+              <GoogleLogo />
+              Continue with Google
+            </button>
+          </div>
+
+          <ul className="auth-features">
+            <li>
+              <Layers size={18} />
+              <div>
+                <strong>One search, every portal</strong>
+                <span>Duplicates are merged, so you see each property once and where it's cheapest.</span>
+              </div>
+            </li>
+            <li>
+              <Bell size={18} />
+              <div>
+                <strong>Alerts for new listings</strong>
+                <span>Email, webhook or Discord the moment a new listing matches your criteria.</span>
+              </div>
+            </li>
+            <li>
+              <BarChartLine size={18} />
+              <div>
+                <strong>Market stats</strong>
+                <span>Track price per m² and supply by layout, area and period.</span>
+              </div>
+            </li>
+          </ul>
+        </main>
+
+        <footer className="auth-footer">© {new Date().getFullYear()} Havasi Reality</footer>
       </div>
 
-      {/* Features Section */}
-      <div className="py-4 py-md-5">
-        <div className="container">
-          <div className="row text-center mb-4 mb-md-5">
-            <div className="col-12">
-              <h2 className="h2 h-md-1 mb-3">Why Choose Our Platform?</h2>
-              <p className="text-muted fs-6">
-                We make finding your perfect apartment in Prague simple and efficient
-              </p>
-            </div>
-          </div>
-
-          <div className="row g-3 g-md-4">
-            <div className="col-12 col-md-4">
-              <div className="text-center p-3 p-md-4">
-                <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '60px', height: '60px'}}>
-                  <i className="fas fa-search fa-lg fa-md-2x text-primary"></i>
-                </div>
-                <h4 className="h5 h-md-4">Comprehensive Search</h4>
-                <p className="text-muted small">
-                  Browse through thousands of apartments for sale and rent across the entire Prague region.
-                  Filter by price, location, size, and amenities to find exactly what you need.
-                </p>
-              </div>
-            </div>
-
-            <div className="col-12 col-md-4">
-              <div className="text-center p-3 p-md-4">
-                <div className="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '60px', height: '60px'}}>
-                  <i className="fas fa-bell fa-lg fa-md-2x text-success"></i>
-                </div>
-                <h4 className="h5 h-md-4">Smart Notifications</h4>
-                <p className="text-muted small">
-                  Never miss out on new listings! Set up custom notifications based on your preferences
-                  and be the first to know about the newest apartment entries in your desired areas.
-                </p>
-              </div>
-            </div>
-
-            <div className="col-12 col-md-4">
-              <div className="text-center p-3 p-md-4">
-                <div className="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '60px', height: '60px'}}>
-                  <i className="fas fa-map-marker-alt fa-lg fa-md-2x text-info"></i>
-                </div>
-                <h4 className="h5 h-md-4">Prague Region Coverage</h4>
-                <p className="text-muted small">
-                  Complete coverage of Prague and surrounding areas. From the historic center
-                  to modern suburbs, find properties in every district of the Prague region.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="auth-visual">
+        <DecorativeMap />
       </div>
-
-      {/* Call to Action Section */}
-      <div className="py-4 py-md-5" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
-        <div className="container">
-          <div className="row justify-content-center text-center">
-            <div className="col-12 col-lg-8 px-3">
-              <h3 className="h3 h-md-2 mb-3 text-white">Ready to Find Your Dream Apartment?</h3>
-              <p className="mb-4 text-white fs-6">
-                Join thousands of satisfied users who found their perfect home through our platform.
-                Start your search today and set up personalized notifications to stay ahead of the market.
-              </p>
-              <div className="d-grid d-sm-block">
-                <button
-                  className="btn btn-light btn-lg px-4 px-md-5 py-3 shadow w-100 w-sm-auto"
-                  onClick={() => googleLogin()}
-                >
-                  <i className="fab fa-google me-2 text-primary"></i>
-                  <span className="d-none d-sm-inline">Login with Google to Start</span>
-                  <span className="d-sm-none">Login with Google</span>
-                </button>
-              </div>
-              <div className="mt-3">
-                <small className="text-white opacity-75 d-block d-sm-inline">
-                  Free to use • Instant notifications • Verified listings
-                </small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="bg-dark text-white py-3 py-md-4">
-        <div className="container">
-          <div className="row">
-            <div className="col-12 col-md-6 mb-2 mb-md-0 text-center text-md-start">
-              <h6 className="h6 mb-1">Havasi Reality Platform</h6>
-              <p className="mb-0 small text-muted">
-                Your trusted partner in finding apartments for sale and rent in Prague region.
-              </p>
-            </div>
-            <div className="col-12 col-md-6 text-center text-md-end">
-              <small className="text-muted">
-                © 2025 Havasi Reality Platform. All rights reserved.
-              </small>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

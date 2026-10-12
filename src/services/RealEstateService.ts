@@ -1,4 +1,5 @@
 import {RealEstate} from '../types/realEstate';
+import {BuildingType, TransactionType} from '../types/property';
 import {API_BASE_URL, getAuthHeaders, handleApiError, apiRequest} from "./api";
 
 export type SortDirection = 'ASC' | 'DESC';
@@ -16,35 +17,47 @@ export const fetchRealEstateById = async (id: string): Promise<RealEstate> => {
   return await res.json();
 };
 
-export const fetchRealEstates = async (
-  offset: number = 0,
-  limit: number = 10,
-  sortDirection: SortDirection = 'DESC',
-  search?: string,
-  transaction?: 'SALE' | 'RENT',
-  building: string = 'APARTMENT',
-  sizeMin: number = 0,
-  sizeMax: number = 1000,
-  priceMin: number = 0,
-  priceMax: number = 1000000000
-): Promise<RealEstate[]> => {
+export interface FetchRealEstatesOptions {
+  offset?: number;
+  limit?: number;
+  sortDirection?: SortDirection;
+  search?: string;
+  transaction?: TransactionType;
+  building?: BuildingType;
+  subCategories?: string[];
+  sizeMin?: number;
+  sizeMax: number;
+  priceMin?: number;
+  priceMax?: number;
+  signal?: AbortSignal;
+}
+
+export const fetchRealEstates = async ({
+  offset = 0,
+  limit = 10,
+  sortDirection = 'DESC',
+  search,
+  transaction = 'SALE',
+  building = 'APARTMENT',
+  subCategories = [],
+  sizeMin = 0,
+  sizeMax,
+  priceMin = 0,
+  priceMax = 1000000000,
+  signal,
+}: FetchRealEstatesOptions): Promise<RealEstate[]> => {
   const url = new URL(`${API_BASE_URL}/api/real-estates`);
   url.searchParams.append('offset', offset.toString());
   url.searchParams.append('limit', limit.toString());
   url.searchParams.append('sortDirection', sortDirection);
 
-  // Add search parameter if provided and not empty
   if (search && search.trim() !== '') {
-    url.searchParams.append('search', encodeURIComponent(search.trim()));
+    url.searchParams.append('search', search.trim());
   }
 
-  // Add transaction parameter if provided
-  if (transaction) {
-    url.searchParams.append('transaction', transaction);
-  }
-
-  // Add advanced search parameters
+  url.searchParams.append('transaction', transaction);
   url.searchParams.append('building', building);
+  subCategories.forEach(sub => url.searchParams.append('subCategory', sub));
   url.searchParams.append('sizeMin', sizeMin.toString());
   url.searchParams.append('sizeMax', sizeMax.toString());
   url.searchParams.append('priceMin', priceMin.toString());
@@ -52,6 +65,7 @@ export const fetchRealEstates = async (
 
   const res = await apiRequest(url.toString(), {
     headers: getAuthHeaders(),
+    signal,
   });
 
   if (!res.ok) await handleApiError(res, 'Failed to fetch real estates');

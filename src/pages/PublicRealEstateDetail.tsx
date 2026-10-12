@@ -1,35 +1,27 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Container, Button, Navbar } from 'react-bootstrap';
-import { PersonFill } from 'react-bootstrap-icons';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from 'react-bootstrap';
 import RealEstateDetail from './RealEstateDetail';
+import { BrandMark } from '../components/ui';
 
 const PublicRealEstateDetail: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-vh-100 d-flex flex-column">
-      {/* Simple public navbar */}
-      <Navbar className="bg-primary" data-bs-theme="dark">
-        <Container>
-          <Navbar.Brand className="fw-bold">
-            🏠 Havasi Reality Platform
-          </Navbar.Brand>
-          <Button 
-            variant="outline-light" 
-            size="sm"
-            onClick={() => navigate('/login')}
-          >
-            <PersonFill className="me-1" />
-            Login
-          </Button>
-        </Container>
-      </Navbar>
+    <div className="min-vh-100">
+      <header className="public-topbar">
+        <Link to="/login" className="brand">
+          <BrandMark />
+          Havasi Reality
+        </Link>
+        <Button variant="outline-secondary" size="sm" onClick={() => navigate('/login')}>
+          Sign in
+        </Button>
+      </header>
 
-      {/* Main content - reuse the existing RealEstateDetail component */}
-      <div className="flex-grow-1">
+      <main className="public-content">
         <RealEstateDetail />
-      </div>
+      </main>
     </div>
   );
 };

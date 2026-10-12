@@ -1,7 +1,9 @@
+import { BuildingType, TransactionType } from './property';
+
 export interface Locality {
   city: string;
-  district: string;
-  street: string;
+  district: string | null;
+  street: string | null;
   streetNumber: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -10,7 +12,7 @@ export interface Locality {
 export interface Duplicate {
   url: string;
   price: number;
-  pricePerM2: number;
+  pricePerM2: number | null;
   images: string[];
   provider: string;
 }
@@ -21,13 +23,13 @@ export interface RealEstate {
   name: string;
   url: string;
   price: number;
-  pricePerM2: number;
+  pricePerM2: number | null;
   sizeInM2: number;
   currency: string;
   locality: Locality;
-  mainCategory: string;
-  subCategory: string;
-  transactionType: string;
+  mainCategory: BuildingType;
+  subCategory: string | null;
+  transactionType: TransactionType;
   images: string[];
   description: string | null;
   provider: string;

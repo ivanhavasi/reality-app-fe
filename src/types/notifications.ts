@@ -1,21 +1,12 @@
+import { BuildingType, TransactionType } from './property';
+
 export enum NotificationType {
   EMAIL = 'EMAIL',
   WEBHOOK = 'WEBHOOK',
   DISCORD = 'DISCORD'
 }
 
-export enum BuildingType {
-  APARTMENT = 'APARTMENT',
-  HOUSE = 'HOUSE',
-  LAND = 'LAND',
-  COMMERCIAL = 'COMMERCIAL',
-  OTHER = 'OTHER'
-}
-
-export enum TransactionType {
-  SALE = 'SALE',
-  RENT = 'RENT'
-}
+export type { BuildingType, TransactionType } from './property';
 
 export interface FilterRange<T> {
   from?: T;

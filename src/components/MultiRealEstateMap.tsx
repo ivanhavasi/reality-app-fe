@@ -4,14 +4,10 @@ import 'leaflet/dist/leaflet.css';
 import './OpenStreetMap.css';
 import { RealEstate } from '../types/realEstate';
 import { useNavigate } from 'react-router-dom';
-
-// Fix for default markers
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+import { escapeHtml, formatArea, formatCompactPrice, formatPrice, formatPricePerM2, subCategoryLabel } from '../utils/format';
+import { getLowestPrice, localityToString } from '../utils/realEstate';
+import { createTileLayer, PRAGUE_CENTER, pricePinIcon } from '../utils/map';
+import { Spinner } from 'react-bootstrap';
 
 interface MultiRealEstateMapProps {
     realEstates: RealEstate[];
@@ -43,7 +39,7 @@ class MapUtilities {
 
         // Initialize the map
         const map = L.map(mapRef.current, {
-            center: [50.0755, 14.4378], // Prague center
+            center: PRAGUE_CENTER,
             zoom: 11,
             zoomControl: true,
             attributionControl: true,
@@ -52,15 +48,7 @@ class MapUtilities {
             trackResize: true,
         });
 
-        // Add tile layer
-        const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19,
-            minZoom: 1,
-            updateWhenIdle: false,
-            updateWhenZooming: false,
-            keepBuffer: 2,
-        });
+        const tileLayer = createTileLayer();
 
         tileLayer.on('tileerror', (error) => {
             console.warn('Tile loading error:', error);
@@ -132,13 +120,6 @@ class MapUtilities {
         }
     }
 
-    static formatCurrency(price: number, currency: string): string {
-        if (currency === 'CZK') {
-            return `${price.toLocaleString()} Kč`;
-        }
-        return `${price.toLocaleString()} ${currency}`;
-    }
-
     static getAddressString(locality: any): string {
         const { city, district, street, streetNumber } = locality;
         const parts = [];
@@ -160,38 +141,34 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
     const geocodingQueueRef = useRef<RealEstate[]>([]);
 
     const createMarkerForEstate = (estate: RealEstate, location: [number, number], map: L.Map): L.Marker => {
-        const marker = L.marker(location);
+        const price = getLowestPrice(estate);
+        const marker = L.marker(location, {
+            icon: pricePinIcon(escapeHtml(formatCompactPrice(price, estate.currency))),
+            riseOnHover: true,
+        });
 
-        let popupContent = `
-      <div style="width: 220px">
-        <div style="font-weight: bold; margin-bottom: 5px;">${estate.name}</div>
-    `;
+        const name = escapeHtml(estate.name);
+        const summary = [
+            subCategoryLabel(estate.mainCategory, estate.subCategory),
+            formatArea(estate.sizeInM2),
+            estate.mainCategory === 'LAND' && estate.pricePerM2 ? formatPricePerM2(estate.pricePerM2, estate.currency) : '',
+        ].filter(Boolean).join(' · ');
 
-        if (estate.images && estate.images.length > 0) {
-            popupContent += `
-        <img src="${estate.images[0]}" alt="${estate.name}" 
-          style="width: 100%; height: 120px; object-fit: cover; margin-bottom: 5px; border-radius: 4px;">
-      `;
-        }
+        const image = estate.images && estate.images.length > 0
+            ? `<img src="${escapeHtml(estate.images[0])}" alt="">`
+            : '';
 
-        popupContent += `
-      <div style="margin-bottom: 5px;">
-        <strong>${MapUtilities.formatCurrency(estate.price, estate.currency)}</strong>
-      </div>
-      <div style="margin-bottom: 5px;">
-        ${estate.sizeInM2} m² - ${estate.subCategory}
-      </div>
-      <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">
-        ${MapUtilities.getAddressString(estate.locality)}
-      </div>
-      <button 
-        class="popup-view-btn" 
-        data-estate-id="${estate.id}" 
-        style="width: 100%; padding: 5px; background-color: #0d6efd; color: white; border: none; 
-        border-radius: 4px; cursor: pointer; margin-top: 5px;">
-        View Property
-      </button>
-    </div>`;
+        const popupContent = `
+      <div class="map-popup">
+        ${image}
+        <div class="map-popup-body">
+          <div class="map-popup-price">${escapeHtml(formatPrice(price, estate.currency))}</div>
+          <div class="map-popup-title">${name}</div>
+          <div class="map-popup-meta">${escapeHtml(summary)}</div>
+          <div class="map-popup-meta">${escapeHtml(localityToString(estate.locality, true))}</div>
+          <button class="map-popup-btn" data-estate-id="${escapeHtml(estate.id)}">View listing</button>
+        </div>
+      </div>`;
 
         marker.bindPopup(popupContent);
         marker.addTo(map);
@@ -323,19 +300,19 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
                                         });
                                     } catch (err) {
                                         console.warn('Error fitting bounds, falling back to default view:', err);
-                                        mapInstanceRef.current.setView([50.0755, 14.4378], 11);
+                                        mapInstanceRef.current.setView(PRAGUE_CENTER, 11);
                                     }
                                 }
                             }, 100);
                         } catch (err) {
                             console.warn('Error setting map view:', err);
                             if (mapInstanceRef.current) {
-                                mapInstanceRef.current.setView([50.0755, 14.4378], 11);
+                                mapInstanceRef.current.setView(PRAGUE_CENTER, 11);
                             }
                         }
                     } else {
                         if (mapInstanceRef.current) {
-                            mapInstanceRef.current.setView([50.0755, 14.4378], 11);
+                            mapInstanceRef.current.setView(PRAGUE_CENTER, 11);
                         }
                     }
 
@@ -343,12 +320,12 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
                     map.on('popupopen', (e) => {
                         const popup = e.popup;
                         const container = popup.getElement();
-                        const viewBtn = container?.querySelector('.popup-view-btn');
+                        const viewBtn = container?.querySelector('.map-popup-btn');
 
                         if (viewBtn) {
                             viewBtn.addEventListener('click', (e) => {
                                 e.stopPropagation();
-                                const estateId = (e.target as HTMLElement).getAttribute('data-estate-id');
+                                const estateId = (e.currentTarget as HTMLElement).getAttribute('data-estate-id');
                                 if (estateId) {
                                     navigate(`/real-estates/${estateId}`);
                                 }
@@ -414,13 +391,18 @@ const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, he
     }, [mapRef]);
 
     if (error) {
-        return <div className="error-message">{error}</div>;
+        return <div className="loading-block" style={{ height, minHeight: 0 }}>{error}</div>;
     }
 
     return (
-        <div style={{ position: 'relative', height }}>
-            <div ref={mapRef} className="map-container" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
-            {loading && <div className="loading-indicator">Loading map...</div>}
+        <div className="map-container" style={{ height }}>
+            <div ref={mapRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+            {loading && (
+                <div className="loading-block" style={{ position: 'absolute', inset: 0, zIndex: 1000, minHeight: 0, background: 'var(--app-surface-2)' }}>
+                    <Spinner animation="border" size="sm" role="status" />
+                    Loading map…
+                </div>
+            )}
         </div>
     );
 };

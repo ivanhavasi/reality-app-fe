@@ -3,14 +3,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './OpenStreetMap.css';
 import { RealEstate } from '../types/realEstate';
-
-// Fix for default markers
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+import { escapeHtml } from '../utils/format';
+import { createTileLayer, locationPinIcon } from '../utils/map';
+import { Spinner } from 'react-bootstrap';
+import { GeoAlt } from 'react-bootstrap-icons';
 
 interface OpenStreetMapProps {
   realEstate: RealEstate;
@@ -85,15 +81,7 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
         trackResize: true,
       });
 
-      // Add OpenStreetMap tile layer with better error handling
-      const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-        minZoom: 1,
-        updateWhenIdle: false,  // Update tiles even when not idle
-        updateWhenZooming: false, // Update tiles even during zoom
-        keepBuffer: 2, // Keep more tiles in buffer
-      });
+      const tileLayer = createTileLayer();
 
       // Add error handling for tile loading issues
       tileLayer.on('tileerror', (error) => {
@@ -140,12 +128,11 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
             map.setView(propertyLocation, 16);
 
             // Add marker for the exact location
-            const marker = L.marker(propertyLocation);
+            const marker = L.marker(propertyLocation, { icon: locationPinIcon() });
             marker.bindPopup(`
-              <div>
-                <strong>Property Location</strong><br>
-                ${getAddressString()}<br>
-                <small>GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}</small>
+              <div class="map-popup-body">
+                <strong>${escapeHtml(getAddressString())}</strong>
+                <div class="map-popup-meta">${latitude.toFixed(5)}, ${longitude.toFixed(5)}</div>
               </div>
             `);
             marker.addTo(map);
@@ -216,8 +203,13 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
           // Center on the found location and add a simple marker
           map.setView([lat, lon], 16);
 
-          const marker = L.marker([lat, lon]);
-          marker.bindPopup(`<strong>${street || 'Location'}</strong><br>${city || ''}`);
+          const marker = L.marker([lat, lon], { icon: locationPinIcon() });
+          marker.bindPopup(`
+            <div class="map-popup-body">
+              <strong>${escapeHtml(street || 'Location')}</strong>
+              <div class="map-popup-meta">${escapeHtml(city || '')}</div>
+            </div>
+          `);
           marker.addTo(map);
           return;
         }
@@ -239,12 +231,12 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
     // Always center the map on the default location
     map.setView(cityCenter, 12);
 
-    const marker = L.marker(cityCenter);
+    const marker = L.marker(cityCenter, { icon: locationPinIcon() });
     marker.bindPopup(`
-      <div>
-        <strong>${defaultCity}</strong><br>
-        ${getAddressString() || 'General area'}<br>
-        <small>Approximate location</small>
+      <div class="map-popup-body">
+        <strong>${escapeHtml(defaultCity)}</strong>
+        <div class="map-popup-meta">${escapeHtml(getAddressString() || 'General area')}</div>
+        <div class="map-popup-meta">Approximate location</div>
       </div>
     `);
     marker.addTo(map);
@@ -313,23 +305,9 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
 
   if (error) {
     return (
-      <div 
-        style={{ 
-          height, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          backgroundColor: '#f8f9fa', 
-          color: '#6c757d',
-          borderRadius: '0.375rem',
-          border: '1px solid #dee2e6'
-        }}
-      >
-        <div className="text-center">
-          <i className="fas fa-map-marked-alt fa-2x mb-2"></i>
-          <div>Map could not be loaded</div>
-          <small>{error}</small>
-        </div>
+      <div className="loading-block flex-column gap-2" style={{ height, minHeight: 0 }}>
+        <GeoAlt size={22} />
+        Map could not be loaded
       </div>
     );
   }
@@ -337,40 +315,14 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
   return (
     <div style={{ position: 'relative', height, width: '100%' }} className="map-container">
       {loading && (
-        <div 
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(248, 249, 250, 0.9)',
-            zIndex: 1000,
-            borderRadius: '0.375rem'
-          }}
-        >
-          <div className="text-center">
-            <div className="spinner-border text-primary mb-2" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <div>Loading map...</div>
-          </div>
+        <div className="loading-block" style={{ position: 'absolute', inset: 0, zIndex: 1000, minHeight: 0, background: 'var(--app-surface-2)' }}>
+          <Spinner animation="border" size="sm" role="status" />
+          Loading map…
         </div>
       )}
       <div
         ref={mapRef}
-        style={{
-          height: '100%',
-          width: '100%',
-          borderRadius: '0.375rem',
-          border: '1px solid #dee2e6',
-          position: 'relative',
-          zIndex: 0,
-          overflow: 'hidden'
-        }}
+        style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0, overflow: 'hidden' }}
         className="leaflet-container"
       />
     </div>

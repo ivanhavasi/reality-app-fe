@@ -8,8 +8,9 @@ import { UserProvider } from './context/UserContext';
 import { RealEstateProvider } from './context/RealEstateContext';
 import PublicRealEstateDetail from './pages/PublicRealEstateDetail';
 import RealEstateDetail from './pages/RealEstateDetail';
-import './mobile-improvements.css';
-import './modern-styles.css';
+import { ErrorProvider } from './context/ErrorContext';
+import ErrorToast from './components/ErrorToast';
+import { Spinner } from 'react-bootstrap';
 
 // Component to show the appropriate real estate detail based on authentication
 const RealEstateDetailRouter: React.FC = () => {
@@ -34,13 +35,10 @@ const AppContent = () => {
   // Show loading spinner while initializing authentication
   if (isInitializing) {
     return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
-        <div className="text-center">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="mt-3 text-muted">Loading application...</p>
-        </div>
+      <div className="splash">
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
       </div>
     );
   }
@@ -62,9 +60,12 @@ const App = () => {
       <UserProvider>
         <AuthProvider>
           <RealEstateProvider>
-            <Router>
-              <AppContent />
-            </Router>
+            <ErrorProvider>
+              <Router>
+                <AppContent />
+              </Router>
+              <ErrorToast />
+            </ErrorProvider>
           </RealEstateProvider>
         </AuthProvider>
       </UserProvider>

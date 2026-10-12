@@ -5,23 +5,20 @@ import {
   enableNotification, 
   disableNotification 
 } from '../services/api';
-import { 
-  Notification, 
-  NotificationType, 
-  BuildingType, 
-  TransactionType, 
-  FilterRange 
-} from '../types/notifications';
-import { Button, Modal, Badge, Card, ListGroup, ButtonGroup, Container, Row, Col, Spinner } from 'react-bootstrap';
 import {
-  Trash, 
-  ToggleOff, 
-  ToggleOn, 
-  PlusCircle,
-  CaretDown,
-  CaretUp
-} from 'react-bootstrap-icons';
+  Notification,
+  NotificationType,
+  FilterRange,
+  EmailNotification,
+  WebhookNotification,
+  DiscordWebhookNotification
+} from '../types/notifications';
+import { BUILDING_TYPE_META, isBuildingType, TRANSACTION_TYPE_LABELS } from '../types/property';
+import { buildingTypeLabel, subCategoryLabel } from '../utils/format';
+import { Button, Form, Modal, Spinner } from 'react-bootstrap';
+import { Bell, BellSlash, Discord, Envelope, Link45deg, Plus, Trash3 } from 'react-bootstrap-icons';
 import AddNotification from '../components/AddNotification';
+import { EmptyState, PageHeader } from '../components/ui';
 import { useError } from '../context/ErrorContext';
 
 interface NotificationsProps {
@@ -32,7 +29,6 @@ const Notifications: React.FC<NotificationsProps> = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [expandedFilters, setExpandedFilters] = useState<{[id: string]: boolean}>({});
   const [actionLoading, setActionLoading] = useState<{[id: string]: string}>({});
   const { setError } = useError();
   
@@ -109,329 +105,155 @@ const Notifications: React.FC<NotificationsProps> = () => {
     }
   };
 
-  const getTypeSpecificInfo = (notification: Notification) => {
+  const getChannel = (notification: Notification) => {
     switch (notification.type) {
       case NotificationType.EMAIL:
-        return <div><strong>Email:</strong> {(notification as any).email}</div>;
+        return { icon: Envelope, label: 'Email', target: (notification as EmailNotification).email };
       case NotificationType.WEBHOOK:
-        return <div><strong>URL:</strong> {(notification as any).url}</div>;
+        return { icon: Link45deg, label: 'Webhook', target: (notification as WebhookNotification).url };
       case NotificationType.DISCORD:
-        return <div><strong>Discord Webhook ID:</strong> {(notification as any).webhookId}</div>;
+        return { icon: Discord, label: 'Discord', target: `Webhook ${(notification as DiscordWebhookNotification).webhookId}` };
       default:
-        return null;
+        return { icon: Bell, label: notification.type, target: '' };
     }
   };
 
-  const toggleFilterDetails = (id: string) => {
-    setExpandedFilters(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+  const formatRange = (range: FilterRange<number> | undefined, unit: string) => {
+    const from = range?.from ?? null;
+    const to = range?.to ?? null;
+    const fmt = (v: number) => `${v.toLocaleString('cs-CZ')} ${unit}`;
+    if (from !== null && to !== null) return `${from.toLocaleString('cs-CZ')}–${fmt(to)}`;
+    if (from !== null) return `from ${fmt(from)}`;
+    if (to !== null) return `up to ${fmt(to)}`;
+    return null;
   };
 
-  const renderFilterRange = <T extends number>(range?: FilterRange<T>) => {
-    if (!range) return 'Any';
-    if (range.from && range.to) return `${range.from} - ${range.to}`;
-    if (range.from) return `Min: ${range.from}`;
-    if (range.to) return `Max: ${range.to}`;
-    return 'Any';
+  const describeCriteria = (notification: Notification) => {
+    const { buildingType, transactionType, subTypes, price, size } = notification.filter;
+    return [
+      buildingTypeLabel(buildingType) || 'Any property',
+      transactionType ? TRANSACTION_TYPE_LABELS[transactionType]?.toLowerCase() ?? transactionType : null,
+      (subTypes || []).map(subType => subCategoryLabel(buildingType, subType)).join(', ') || null,
+      formatRange(price, 'Kč'),
+      formatRange(size, 'm²'),
+    ].filter(Boolean).join(' · ');
   };
 
-  const renderFilter = (notification: Notification) => {
-    const { filter } = notification;
-    const isExpanded = expandedFilters[notification.id] || false;
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
-    return (
-      <div className="mt-3">
-        <div className="d-flex justify-content-between align-items-center">
-          <strong>Filter:</strong>
-          <Button
-            variant="link"
-            size="sm"
-            onClick={() => toggleFilterDetails(notification.id)}
-            className="p-0"
-          >
-            {isExpanded ? (
-              <>Hide Details <CaretUp size={14} /></>
-            ) : (
-              <>Show Details <CaretDown size={14} /></>
-            )}
-          </Button>
-        </div>
-
-        {isExpanded && (
-          <ListGroup variant="flush" className="mt-2 border rounded">
-            <ListGroup.Item>
-              <strong>Building Type:</strong> {filter.buildingType}
-            </ListGroup.Item>
-            <ListGroup.Item>
-              <strong>Transaction Type:</strong> {filter.transactionType}
-            </ListGroup.Item>
-            <ListGroup.Item>
-              <strong>Size:</strong> {renderFilterRange(filter.size)} m²
-            </ListGroup.Item>
-            <ListGroup.Item>
-              <strong>Price:</strong> {renderFilterRange(filter.price)}
-            </ListGroup.Item>
-            {filter.subTypes && filter.subTypes.length > 0 && (
-              <ListGroup.Item>
-                <strong>Sub Types:</strong>{' '}
-                {filter.subTypes.map((subType, index) => (
-                  <Badge key={index} bg="secondary" className="me-1">
-                    {subType}
-                  </Badge>
-                ))}
-              </ListGroup.Item>
-            )}
-          </ListGroup>
-        )}
-      </div>
-    );
-  };
-
-  const onNotificationAdded = () => {
-    fetchNotifications();
-    setShowAddModal(false);
-  };
+  const activeCount = notifications.filter(n => n.enabled).length;
 
   return (
-    <Container fluid className="p-0">
-      {/* Modern Header Section */}
-      <div className="gradient-header py-4 py-md-5 mb-4">
-        <Container>
-          <Row className="align-items-center">
-            <Col>
-              <h1 className="display-6 display-md-4 fw-bold text-white mb-2 mb-md-3">
-                Notification Settings
-              </h1>
-              <p className="text-white opacity-90 mb-0 fs-6">
-                Manage your property alerts and stay informed about new listings
-              </p>
-            </Col>
-            <Col xs="auto">
-              <Button
-                variant="light"
-                onClick={() => setShowAddModal(true)}
-                className="modern-btn shadow-sm"
-                size="lg"
-              >
-                <PlusCircle className="me-2" />
-                Add Notification
-              </Button>
-            </Col>
-          </Row>
-        </Container>
-      </div>
+    <>
+      <PageHeader
+        title="Alerts"
+        subtitle={
+          notifications.length > 0
+            ? `${activeCount} of ${notifications.length} active · You'll be notified when a new listing matches`
+            : "Get notified the moment a new listing matches what you're looking for"
+        }
+        actions={
+          <Button variant="primary" onClick={() => setShowAddModal(true)}>
+            <Plus size={18} />
+            New alert
+          </Button>
+        }
+      />
 
-      <Container>
-        {/* Loading State */}
-        {loading && (
-          <div className="loading-container">
-            <Spinner animation="border" role="status">
-              <span className="visually-hidden">Loading notifications...</span>
-            </Spinner>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && notifications.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <i className="fas fa-bell-slash"></i>
+      {loading ? (
+        <div className="alert-list" aria-hidden="true">
+          {[0, 1, 2].map(i => (
+            <div className="alert-item" key={i}>
+              <div className="flex-grow-1">
+                <div className="skeleton" style={{ height: 16, width: '30%' }} />
+                <div className="skeleton mt-3" style={{ height: 12, width: '70%' }} />
+                <div className="skeleton mt-2" style={{ height: 12, width: '45%' }} />
+              </div>
             </div>
-            <h3>No Notifications Set Up</h3>
-            <p className="text-muted">
-              Create your first notification to get alerts about new properties that match your criteria.
-            </p>
-            <Button
-              variant="primary"
-              className="modern-btn"
-              onClick={() => setShowAddModal(true)}
-            >
-              <PlusCircle className="me-2" />
-              Create Your First Notification
+          ))}
+        </div>
+      ) : notifications.length === 0 ? (
+        <EmptyState
+          icon={BellSlash}
+          title="No alerts yet"
+          text="Create an alert with your criteria and we'll email you, call your webhook or post to Discord when a matching listing appears."
+          actions={
+            <Button variant="primary" onClick={() => setShowAddModal(true)}>
+              <Plus size={18} />
+              Create your first alert
             </Button>
-          </div>
-        )}
+          }
+        />
+      ) : (
+        <div className="alert-list">
+          {notifications.map(notification => {
+            const channel = getChannel(notification);
+            const ChannelIcon = channel.icon;
+            const busy = actionLoading[notification.id];
+            const TypeIcon = isBuildingType(notification.filter.buildingType)
+              ? BUILDING_TYPE_META[notification.filter.buildingType].icon
+              : Bell;
+            return (
+              <div key={notification.id} className={`alert-item${notification.enabled ? '' : ' is-off'}`}>
+                <div className="link-card-icon d-none d-sm-grid">
+                  <TypeIcon size={16} />
+                </div>
+                <div className="alert-item-main">
+                  <div className="alert-item-head">
+                    <h2 className="alert-item-title">{notification.name}</h2>
+                    <span className="chip">
+                      <span className={`status-dot${notification.enabled ? ' is-on' : ''}`} />
+                      {notification.enabled ? 'Active' : 'Paused'}
+                    </span>
+                  </div>
+                  <div className="alert-item-criteria">{describeCriteria(notification)}</div>
+                  <div className="alert-item-meta">
+                    <span className="text-truncate">
+                      <ChannelIcon size={13} className="flex-shrink-0" />
+                      <span className="text-truncate">{channel.target || channel.label}</span>
+                    </span>
+                    <span>Created {formatDate(notification.createdAt)}</span>
+                  </div>
+                </div>
+                <div className="alert-item-actions">
+                  <Form.Check
+                    type="switch"
+                    id={`alert-switch-${notification.id}`}
+                    checked={notification.enabled}
+                    disabled={busy === 'enable' || busy === 'disable'}
+                    onChange={() => handleToggleEnable(notification)}
+                    aria-label={notification.enabled ? 'Pause alert' : 'Resume alert'}
+                    title={notification.enabled ? 'Pause alert' : 'Resume alert'}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="btn-icon btn-ghost-danger"
+                    onClick={() => handleDelete(notification.id)}
+                    disabled={busy === 'delete'}
+                    aria-label="Delete alert"
+                    title="Delete alert"
+                  >
+                    {busy === 'delete' ? <Spinner animation="border" size="sm" /> : <Trash3 size={15} />}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-        {/* Notifications Grid */}
-        {!loading && notifications.length > 0 && (
-          <>
-            <Row className="mb-4">
-              <Col>
-                <Card className="modern-card border-0 mb-4" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
-                  <Card.Body className="p-4">
-                    <Row className="align-items-center">
-                      <Col md={8}>
-                        <div className="text-white">
-                          <h4 className="text-white mb-2">
-                            <i className="fas fa-bell me-2"></i>
-                            Your Active Notifications
-                          </h4>
-                          <p className="text-white opacity-90 mb-0">
-                            {notifications.filter(n => n.enabled).length} of {notifications.length} notifications are currently active and monitoring Prague properties
-                          </p>
-                        </div>
-                      </Col>
-                      <Col md={4} className="text-center text-md-end mt-3 mt-md-0">
-                        <div className="d-flex flex-column align-items-center align-items-md-end">
-                          <Button
-                            variant="light"
-                            size="sm"
-                            onClick={() => setShowAddModal(true)}
-                            className="modern-btn"
-                          >
-                            <i className="fas fa-plus me-1"></i>
-                            Add More
-                          </Button>
-                        </div>
-                      </Col>
-                    </Row>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-
-            <Row className="g-4">
-              {notifications.map(notification => (
-                <Col key={notification.id} lg={6} xl={4}>
-                  <Card className="modern-card h-100" style={{backgroundColor: 'var(--bs-body-bg)', borderColor: 'var(--bs-border-color)'}}>
-                    <Card.Header className="bg-transparent border-0 py-3">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div className="d-flex align-items-center">
-                          <div className={`rounded-circle d-flex align-items-center justify-content-center me-3 ${
-                            notification.enabled ? 'bg-success bg-opacity-10' : 'bg-secondary bg-opacity-10'
-                          }`} style={{width: '40px', height: '40px'}}>
-                            <i className={`fas fa-bell ${
-                              notification.enabled ? 'text-success' : 'text-secondary'
-                            }`}></i>
-                          </div>
-                          <div>
-                            <h6 className="mb-0 fw-bold" style={{color: 'var(--bs-body-color)'}}>{notification.name}</h6>
-                            <small className="text-muted">{notification.type}</small>
-                          </div>
-                        </div>
-                        <Badge bg={notification.enabled ? 'success' : 'secondary'}>
-                          {notification.enabled ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                    </Card.Header>
-
-                    <Card.Body className="pt-0">
-                      {/* Type-specific information */}
-                      <div className="mb-3">
-                        <div className="d-inline-block p-2 rounded-2 mb-2" style={{backgroundColor: 'var(--bs-secondary-bg)', color: 'var(--bs-body-color)'}}>
-                          {getTypeSpecificInfo(notification)}
-                        </div>
-                      </div>
-
-                      {/* Filter Details */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="small" style={{color: 'var(--bs-body-color)'}}>Filter Criteria:</strong>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => toggleFilterDetails(notification.id)}
-                            className="p-0 text-decoration-none"
-                            style={{color: 'var(--bs-primary)'}}
-                          >
-                            {expandedFilters[notification.id] ?
-                              <CaretUp size={16} /> : <CaretDown size={16} />
-                            }
-                          </Button>
-                        </div>
-
-                        {expandedFilters[notification.id] && (
-                          <div className="rounded-3 p-3" style={{backgroundColor: 'var(--bs-secondary-bg)'}}>
-                            <Row className="g-2 small">
-                              <Col sm={6}>
-                                <div style={{color: 'var(--bs-body-color)'}}><strong>Building:</strong> {notification.filter.buildingType || 'Any'}</div>
-                              </Col>
-                              <Col sm={6}>
-                                <div style={{color: 'var(--bs-body-color)'}}><strong>Transaction:</strong> {notification.filter.transactionType || 'Any'}</div>
-                              </Col>
-                              <Col sm={6}>
-                                <div style={{color: 'var(--bs-body-color)'}}><strong>Price:</strong> {renderFilterRange(notification.filter.price)}</div>
-                              </Col>
-                              <Col sm={6}>
-                                <div style={{color: 'var(--bs-body-color)'}}><strong>Size:</strong> {renderFilterRange(notification.filter.size)} m²</div>
-                              </Col>
-                            </Row>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Dates */}
-                      <div className="mb-3">
-                        <Row className="g-1 small text-muted">
-                          <Col xs={6}>
-                            <div><i className="fas fa-calendar-plus me-1"></i>Created: {new Date(notification.createdAt).toLocaleDateString()}</div>
-                          </Col>
-                          <Col xs={6}>
-                            <div><i className="fas fa-calendar-edit me-1"></i>Updated: {new Date(notification.updatedAt).toLocaleDateString()}</div>
-                          </Col>
-                        </Row>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="d-flex gap-2 mt-auto">
-                        <Button
-                          variant={notification.enabled ? "outline-warning" : "outline-success"}
-                          size="sm"
-                          onClick={() => handleToggleEnable(notification)}
-                          disabled={actionLoading[notification.id] === 'enable' || actionLoading[notification.id] === 'disable'}
-                          className="modern-btn flex-fill"
-                        >
-                          {actionLoading[notification.id] === 'enable' || actionLoading[notification.id] === 'disable' ? (
-                            <Spinner size="sm" />
-                          ) : notification.enabled ? (
-                            <>
-                              <ToggleOff className="me-1" size={16} />
-                              Disable
-                            </>
-                          ) : (
-                            <>
-                              <ToggleOn className="me-1" size={16} />
-                              Enable
-                            </>
-                          )}
-                        </Button>
-
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={() => handleDelete(notification.id)}
-                          disabled={actionLoading[notification.id] === 'delete'}
-                          className="modern-btn"
-                        >
-                          {actionLoading[notification.id] === 'delete' ? (
-                            <Spinner size="sm" />
-                          ) : (
-                            <Trash size={16} />
-                          )}
-                        </Button>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          </>
-        )}
-
-        {/* Add Notification Modal */}
-        <Modal show={showAddModal} onHide={() => setShowAddModal(false)} size="lg">
-          <AddNotification
-            onSuccess={() => {
-              setShowAddModal(false);
-              fetchNotifications();
-            }}
-            onCancel={() => setShowAddModal(false)}
-          />
-        </Modal>
-      </Container>
-    </Container>
+      <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered>
+        <AddNotification
+          onSuccess={() => {
+            setShowAddModal(false);
+            fetchNotifications();
+          }}
+          onCancel={() => setShowAddModal(false)}
+        />
+      </Modal>
+    </>
   );
 };
 

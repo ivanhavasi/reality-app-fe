@@ -1,5 +1,6 @@
-export type BuildingType = 'APARTMENT' | 'HOUSE' | 'LAND';
-export type TransactionType = 'SALE' | 'RENT';
+import { BuildingType, TransactionType } from './property';
+
+export type { BuildingType, TransactionType } from './property';
 export type TimeGranularity = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 export type GroupByDimension = 'CITY' | 'DISTRICT' | 'STREET' | 'BUILDING_TYPE' | 'TRANSACTION_TYPE';
 export type TimePeriod = '1M' | '3M' | '6M' | '1Y' | '2Y' | '5Y' | 'MAX';
