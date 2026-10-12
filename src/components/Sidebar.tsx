@@ -1,10 +1,11 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
-import { BarChartLine, Bell, BoxArrowRight, DatabaseGear, Gear, Grid1x2, HouseDoor, Inbox } from 'react-bootstrap-icons';
+import { BarChartLine, Bell, BoxArrowRight, DatabaseGear, Gear, Grid1x2, HouseDoor, Inbox, Star } from 'react-bootstrap-icons';
 import type { Icon } from 'react-bootstrap-icons';
 import { useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../context/FavoritesContext';
 import { BrandMark, initials } from './ui';
 
 interface SidebarProps {
@@ -16,16 +17,19 @@ interface NavItem {
   to: string;
   label: string;
   icon: Icon;
+  count?: number | null;
 }
 
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { isAdmin, user } = useUser();
   const { logout } = useAuth();
+  const { count: favoriteCount } = useFavorites();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const browseItems: NavItem[] = [
     ...(isAdmin ? [{ to: '/dashboard', label: 'Overview', icon: Grid1x2 }] : []),
     { to: '/real-estates', label: 'Listings', icon: HouseDoor },
+    { to: '/favorites', label: 'Saved', icon: Star, count: favoriteCount },
     { to: '/stats', label: 'Market stats', icon: BarChartLine },
   ];
 
@@ -34,7 +38,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     { to: '/sent-notifications', label: 'Matches', icon: Inbox },
   ];
 
-  const renderLink = ({ to, label, icon: ItemIcon }: NavItem) => (
+  const renderLink = ({ to, label, icon: ItemIcon, count }: NavItem) => (
     <NavLink
       key={to}
       to={to}
@@ -43,6 +47,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     >
       <ItemIcon size={17} />
       {label}
+      {!!count && <span className="sidebar-count">{count}</span>}
     </NavLink>
   );
 

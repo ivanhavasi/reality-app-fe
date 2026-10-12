@@ -1,4 +1,7 @@
 import L from 'leaflet';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { PLACE_CATEGORY_META, PlaceCategory } from '../types/places';
 
 export const PRAGUE_CENTER: [number, number] = [50.0755, 14.4378];
 
@@ -52,6 +55,14 @@ export const locationPinIcon = () =>
     iconSize: [20, 20],
     iconAnchor: [10, 10],
     popupAnchor: [0, -12],
+  });
+
+export const placePinIcon = (category: PlaceCategory) =>
+  L.divIcon({
+    className: 'place-pin-icon',
+    html: `<span class="place-pin">${renderToStaticMarkup(createElement(PLACE_CATEGORY_META[category].icon, { size: 13 }))}</span>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
   });
 
 export const clusterIcon = (count: number) => {

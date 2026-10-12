@@ -9,6 +9,7 @@ import { RealEstateProvider } from './context/RealEstateContext';
 import PublicRealEstateDetail from './pages/PublicRealEstateDetail';
 import RealEstateDetail from './pages/RealEstateDetail';
 import { ErrorProvider } from './context/ErrorContext';
+import { FavoritesProvider } from './context/FavoritesContext';
 import ErrorToast from './components/ErrorToast';
 import { Spinner } from 'react-bootstrap';
 
@@ -61,9 +62,11 @@ const App = () => {
         <AuthProvider>
           <RealEstateProvider>
             <ErrorProvider>
-              <Router>
-                <AppContent />
-              </Router>
+              <FavoritesProvider>
+                <Router>
+                  <AppContent />
+                </Router>
+              </FavoritesProvider>
               <ErrorToast />
             </ErrorProvider>
           </RealEstateProvider>

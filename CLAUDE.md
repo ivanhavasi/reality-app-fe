@@ -29,6 +29,7 @@ The app uses React Context API for global state management with four main contex
 - **UserContext** (`src/context/UserContext.tsx`): Stores current user information after login.
 - **RealEstateContext** (`src/context/RealEstateContext.tsx`): Caches real estate listings to avoid redundant API calls.
 - **ErrorContext** (`src/context/ErrorContext.tsx`): Global error handling with toast notifications.
+- **FavoritesContext** (`src/context/FavoritesContext.tsx`): The signed-in user's starred listing ids (`isFavorite`, `toggleFavorite` flips the star at once and reloads on failure). `FavoriteButton` renders nothing when signed out, so the public detail page has no star.
 
 Context providers are nested in `App.tsx` in this order: GoogleOAuthProvider → UserProvider → AuthProvider → RealEstateProvider → Router.
 
@@ -57,10 +58,11 @@ Service modules (`RealEstateService.ts`, `UserService.ts`, `TokenService.ts`) us
 The app uses `react-router-dom` v7 with conditional rendering based on authentication:
 
 - `/login`: Login page (redirects to `/dashboard` if authenticated)
-- `/real-estates/:id`: Shows `PublicRealEstateDetail` for unauthenticated users, `RealEstateDetail` in `AdminLayout` for authenticated users
+- `/real-estates/:id`: Shows `PublicRealEstateDetail` for unauthenticated users, `RealEstateDetail` in `AdminLayout` for authenticated users; the price card shows the price against the area (`AreaPrice`, `/api/real-estates/{id}/area-price`, hidden on 204 or error); a Nearby section and map markers show the nearest supermarket, park, stops, schools etc. (`NearbyPlaces`, `/api/real-estates/{id}/nearby`, hidden when empty)
 - All other routes require authentication and render within `AdminLayout`:
   - `/dashboard`: Dashboard page
   - `/real-estates`: Real estate listings with advanced search
+  - `/favorites`: Saved listings (starred), newest first; an unstarred card stays until you leave so a mis-click can be undone
   - `/notifications`: User's notification settings
   - `/sent-notifications`: Notifications received by the user
   - `/settings`: User settings

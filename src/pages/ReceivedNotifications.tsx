@@ -7,6 +7,7 @@ import { userService } from '../services/UserService';
 import { BuildingType } from '../types/property';
 import { formatPrice, typeLabel } from '../utils/format';
 import { EmptyState, ListingImage, ListingSkeletonGrid, PageHeader } from '../components/ui';
+import FavoriteButton from '../components/FavoriteButton';
 
 interface SentNotificationRealEstate {
   id: string;
@@ -136,29 +137,28 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
             {notifications.map((notification) => {
               const estate = notification.realEstate;
               return (
-                <Link
-                  key={`${notification.notificationId}-${estate.id}-${notification.sentAt}`}
-                  to={`/real-estates/${estate.id}`}
-                  className="listing-card"
-                >
-                  <ListingImage src={estate.image} alt={estate.name}>
-                    <div className="listing-tags">
-                      <span className="media-tag">{estate.provider}</span>
+                <div className="listing-card-wrap" key={`${notification.notificationId}-${estate.id}-${notification.sentAt}`}>
+                  <Link to={`/real-estates/${estate.id}`} className="listing-card">
+                    <ListingImage src={estate.image} alt={estate.name}>
+                      <div className="listing-tags">
+                        <span className="media-tag">{estate.provider}</span>
+                      </div>
+                    </ListingImage>
+                    <div className="listing-body">
+                      <div className="listing-price">{formatPrice(estate.price)}</div>
+                      <div className="listing-title line-clamp-1" title={estate.name}>{estate.name}</div>
+                      <div className="listing-meta">
+                        {[estate.mainCategory ? typeLabel(estate.mainCategory, estate.subCategory) : null, estate.city]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </div>
+                      <div className="listing-meta text-3">
+                        Sent {formatSentAt(notification.sentAt)} via {notification.type.toLowerCase()}
+                      </div>
                     </div>
-                  </ListingImage>
-                  <div className="listing-body">
-                    <div className="listing-price">{formatPrice(estate.price)}</div>
-                    <div className="listing-title line-clamp-1" title={estate.name}>{estate.name}</div>
-                    <div className="listing-meta">
-                      {[estate.mainCategory ? typeLabel(estate.mainCategory, estate.subCategory) : null, estate.city]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </div>
-                    <div className="listing-meta text-3">
-                      Sent {formatSentAt(notification.sentAt)} via {notification.type.toLowerCase()}
-                    </div>
-                  </div>
-                </Link>
+                  </Link>
+                  <FavoriteButton listingId={estate.id} />
+                </div>
               );
             })}
           </div>

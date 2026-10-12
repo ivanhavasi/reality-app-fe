@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Spinner, Table } from 'react-bootstrap';
-import { ClockHistory, GeoAlt, PlayFill } from 'react-bootstrap-icons';
+import { ClockHistory, GeoAlt, PinMap, PlayFill } from 'react-bootstrap-icons';
 import type { Icon } from 'react-bootstrap-icons';
 import { EmptyState, PageHeader, Segmented } from '../components/ui';
 import { useError } from '../context/ErrorContext';
-import { getAdminJobs, startCoordinatesBackfillJob, startScrapeJob } from '../services/AdminJobService';
+import { getAdminJobs, startCoordinatesBackfillJob, startPlacesImportJob, startScrapeJob } from '../services/AdminJobService';
 import { AdminJob, AdminJobStatus, isActiveJob } from '../types/admin';
 import { BUILDING_TYPE_META, BuildingType, TransactionType } from '../types/property';
 
 const POLL_INTERVAL_MS = 2000;
+const PLACE_CATEGORY_COUNT = 12;
 
 // the backend scrapes houses too, even though the listings UI doesn't show them yet
 const BUILDING_OPTIONS = (['APARTMENT', 'HOUSE', 'LAND'] as BuildingType[]).map(type => ({
@@ -24,6 +25,7 @@ const TRANSACTION_OPTIONS: { value: TransactionType; label: string }[] = [
 const JOB_LABELS: Record<AdminJob['type'], string> = {
   SCRAPE: 'Scrape',
   BACKFILL_COORDINATES: 'Coordinates',
+  IMPORT_PLACES: 'Places',
 };
 
 type StartJob = (building: BuildingType, transaction: TransactionType) => Promise<unknown>;
@@ -34,10 +36,12 @@ interface JobPanelProps {
   actionLabel: string;
   icon: Icon;
   disabled: boolean;
+  // the places import covers all of Prague, not one kind of listing
+  forListings?: boolean;
   onStart: (building: BuildingType, transaction: TransactionType) => Promise<void>;
 }
 
-const JobPanel: React.FC<JobPanelProps> = ({ title, description, actionLabel, icon: ActionIcon, disabled, onStart }) => {
+const JobPanel: React.FC<JobPanelProps> = ({ title, description, actionLabel, icon: ActionIcon, disabled, forListings = true, onStart }) => {
   const [building, setBuilding] = useState<BuildingType>('APARTMENT');
   const [transaction, setTransaction] = useState<TransactionType>('SALE');
   const [starting, setStarting] = useState(false);
@@ -55,10 +59,12 @@ const JobPanel: React.FC<JobPanelProps> = ({ title, description, actionLabel, ic
     <section className="panel d-flex flex-column">
       <h2 className="panel-title">{title}</h2>
       <p className="panel-subtitle mb-3">{description}</p>
-      <div className="d-flex flex-wrap gap-2 mb-3">
-        <Segmented size="sm" ariaLabel="Property type" value={building} onChange={setBuilding} options={BUILDING_OPTIONS} />
-        <Segmented size="sm" ariaLabel="Transaction" value={transaction} onChange={setTransaction} options={TRANSACTION_OPTIONS} />
-      </div>
+      {forListings && (
+        <div className="d-flex flex-wrap gap-2 mb-3">
+          <Segmented size="sm" ariaLabel="Property type" value={building} onChange={setBuilding} options={BUILDING_OPTIONS} />
+          <Segmented size="sm" ariaLabel="Transaction" value={transaction} onChange={setTransaction} options={TRANSACTION_OPTIONS} />
+        </div>
+      )}
       <div className="mt-auto">
         <Button variant="primary" disabled={disabled || starting} onClick={handleStart}>
           {starting ? <Spinner animation="border" size="sm" className="text-reset" /> : <ActionIcon size={14} />}
@@ -101,6 +107,10 @@ const describeResult = (job: AdminJob) => {
   const count = (value: number) => value.toLocaleString('cs-CZ');
   if (job.status === 'FAILED') return job.error ?? 'Failed';
   if (job.status === 'WAITING') return 'Starts when the scheduled scrape finishes';
+  if (job.type === 'IMPORT_PLACES') {
+    const imported = `${count(job.placesImported)} places in ${job.placeCategoriesImported} of ${PLACE_CATEGORY_COUNT} categories`;
+    return job.status === 'RUNNING' ? `Downloading: ${imported}` : imported;
+  }
   if (job.type === 'SCRAPE') {
     return job.status === 'RUNNING' ? 'Reading portals…' : `${count(job.savedListings)} listings saved`;
   }
@@ -175,6 +185,15 @@ const Admin: React.FC = () => {
           disabled={active}
           onStart={start(startCoordinatesBackfillJob)}
         />
+        <JobPanel
+          title="Nearby places"
+          description="Downloads supermarkets, pharmacies, parks, playgrounds, public transport, schools, hospitals, cinemas and theatres in Prague from OpenStreetMap for the listing detail. Runs by itself on the 1st of every month; takes a few minutes, longer when the server is busy."
+          actionLabel="Import places"
+          icon={PinMap}
+          disabled={active}
+          forListings={false}
+          onStart={start(() => startPlacesImportJob())}
+        />
       </div>
       {active && <p className="form-text mt-2 mb-0">One job runs at a time, so the buttons unlock when this one finishes.</p>}
 
@@ -213,7 +232,9 @@ const Admin: React.FC = () => {
                     <tr key={job.id}>
                       <td className="fw-semibold text-nowrap">{JOB_LABELS[job.type]}</td>
                       <td className="text-nowrap">
-                        {BUILDING_TYPE_META[job.buildingType].plural} · {job.transactionType === 'SALE' ? 'Buy' : 'Rent'}
+                        {job.buildingType && job.transactionType
+                          ? `${BUILDING_TYPE_META[job.buildingType].plural} · ${job.transactionType === 'SALE' ? 'Buy' : 'Rent'}`
+                          : 'All of Prague'}
                       </td>
                       <td><StatusChip status={job.status} /></td>
                       <td className="text-nowrap tabular text-2">{formatStarted(job.startedAt ?? job.createdAt)}</td>

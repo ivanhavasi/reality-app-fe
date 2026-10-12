@@ -51,6 +51,20 @@ export interface RealEstateMapPoint {
   image: string | null;
 }
 
+export interface FavoriteListing {
+  listing: RealEstate;
+  starredAt: string;
+}
+
+// prices are the lowest across portals; the area price is the median of similar listings within the radius
+export interface AreaPriceComparison {
+  pricePerM2: number;
+  areaPricePerM2: number;
+  differencePercent: number;
+  comparableCount: number;
+  radiusInMeters: number;
+}
+
 export interface RealEstateResponse {
   totalCount?: number;
   offset?: number;

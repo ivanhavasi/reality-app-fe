@@ -20,6 +20,14 @@ export const formatCompactPrice = (v: number | null | undefined, cur = 'CZK') =>
 export const formatPricePerM2 = (v: number | null | undefined, cur = 'CZK') =>
   v == null ? '—' : `${formatCurrency(v, cur)}/m²`;
 
+// short distances to 10 m, longer ones in km
+export const formatDistance = (meters: number) =>
+  meters < 100
+    ? `${Math.round(meters)} m`
+    : meters < 1000
+      ? `${Math.round(meters / 10) * 10} m`
+      : `${(meters / 1000).toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} km`;
+
 export const formatArea = (m2: number | null | undefined) =>
   m2 == null
     ? '—'

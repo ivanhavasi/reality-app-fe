@@ -1,5 +1,6 @@
-import {RealEstate, RealEstateMapPoint} from '../types/realEstate';
+import {AreaPriceComparison, RealEstate, RealEstateMapPoint} from '../types/realEstate';
 import {BuildingType, TransactionType} from '../types/property';
+import {NearbyPlace} from '../types/places';
 import {API_BASE_URL, getAuthHeaders, handleApiError, apiRequest} from "./api";
 
 export type SortDirection = 'ASC' | 'DESC';
@@ -15,6 +16,22 @@ export const fetchRealEstateById = async (id: string): Promise<RealEstate> => {
   }
 
   return await res.json();
+};
+
+// null when there are too few similar listings nearby
+export const fetchAreaPriceComparison = async (id: string, signal?: AbortSignal): Promise<AreaPriceComparison | null> => {
+  const res = await fetch(`${API_BASE_URL}/api/real-estates/${id}/area-price`, { signal });
+  if (res.status === 204) return null;
+  if (!res.ok) throw new Error('Failed to compare the price with the area');
+  return await res.json();
+};
+
+// empty for a listing without coordinates or before places are imported
+export const fetchNearbyPlaces = async (id: string, signal?: AbortSignal): Promise<NearbyPlace[]> => {
+  const res = await fetch(`${API_BASE_URL}/api/real-estates/${id}/nearby`, { signal });
+  if (!res.ok) throw new Error('Failed to load nearby places');
+  const places = await res.json();
+  return Array.isArray(places) ? places : [];
 };
 
 export interface FetchRealEstatesOptions {

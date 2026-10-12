@@ -595,6 +595,14 @@ a {
   font-weight: 600;
 }
 
+.sidebar-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--app-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
 .sidebar-link.active svg {
   color: var(--app-accent);
 }
@@ -1054,6 +1062,52 @@ a {
   backdrop-filter: blur(6px);
 }
 
+.listing-card-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.listing-card-wrap .listing-card {
+  height: 100%;
+}
+
+/* room for the star in the top-right corner */
+.listing-card-wrap .listing-tags {
+  right: 3rem;
+}
+
+.favorite-toggle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1d1b18;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(6px);
+  transition: transform 0.12s ease, color 0.12s ease;
+}
+
+.favorite-toggle:hover {
+  transform: scale(1.08);
+}
+
+.favorite-toggle:focus-visible {
+  outline: 2px solid var(--app-text);
+  outline-offset: 2px;
+}
+
+.favorite-toggle.is-active {
+  color: var(--app-accent);
+}
+
 .listing-body {
   padding: 0.75rem 0.125rem 0;
 }
@@ -1311,6 +1365,25 @@ a {
 
 /* Detail page */
 
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.detail-head > div {
+  min-width: 0;
+}
+
+.favorite-button {
+  flex-shrink: 0;
+}
+
+.favorite-button.is-active svg {
+  color: var(--app-accent);
+}
+
 .detail-eyebrow {
   font-size: 0.8125rem;
   font-weight: 600;
@@ -1538,6 +1611,97 @@ a {
   margin-top: 0.5rem;
   font-size: 0.8125rem;
   color: var(--app-text-2);
+}
+
+.area-price {
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--app-border);
+}
+
+.area-price-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.area-price-head .chip {
+  font-size: 0.8125rem;
+}
+
+.area-price-detail {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--app-text-3);
+}
+
+.nearby-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 0.5rem;
+}
+
+.nearby-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+.nearby-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--app-surface-2);
+  color: var(--app-text-2);
+}
+
+.nearby-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.nearby-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--app-text-3);
+}
+
+.nearby-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nearby-distance {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.nearby-walk {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--app-text-3);
+}
+
+.nearby-note {
+  margin: 0.625rem 0 0;
+  font-size: 0.75rem;
+  color: var(--app-text-3);
 }
 
 .price-card-sources {
@@ -2167,6 +2331,27 @@ a {
 .map-count .spinner-border {
   width: 0.75rem;
   height: 0.75rem;
+}
+
+.place-pin-icon {
+  background: none;
+  border: 0;
+}
+
+.place-pin {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-marker-icon:hover .place-pin {
+  background: var(--app-ink);
+  color: var(--app-on-ink);
 }
 
 .location-pin-icon {

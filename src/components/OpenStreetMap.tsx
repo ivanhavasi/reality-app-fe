@@ -3,8 +3,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './OpenStreetMap.css';
 import { RealEstate } from '../types/realEstate';
-import { escapeHtml } from '../utils/format';
-import { applyMapStyle, locationPinIcon, MapStyle } from '../utils/map';
+import { NearbyPlace, PLACE_CATEGORY_META } from '../types/places';
+import { escapeHtml, formatDistance } from '../utils/format';
+import { applyMapStyle, locationPinIcon, MapStyle, placePinIcon } from '../utils/map';
 import MapStyleSwitch, { useMapStyle } from './MapStyleSwitch';
 import { Spinner } from 'react-bootstrap';
 import { GeoAlt } from 'react-bootstrap-icons';
@@ -12,9 +13,10 @@ import { GeoAlt } from 'react-bootstrap-icons';
 interface OpenStreetMapProps {
   realEstate: RealEstate;
   height?: string;
+  places?: NearbyPlace[];
 }
 
-const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450px' }) => {
+const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450px', places }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,8 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
   mapStyleRef.current = mapStyle;
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const appliedStyleRef = useRef<MapStyle | null>(null);
+  // the map is built asynchronously, the places layer waits for it
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -125,6 +129,7 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
 
       // Wait for the map to be ready
       map.whenReady(async () => {
+        setMapReady(true);
         try {
           // Force another invalidation
           map.invalidateSize(true);
@@ -261,12 +266,30 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
 
     return () => {
       clearTimeout(timer);
+      setMapReady(false);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
   }, [realEstate]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapReady || !places?.length) return;
+    const layer = L.layerGroup(
+      places.map(place => {
+        const label = [PLACE_CATEGORY_META[place.category].label, place.name, formatDistance(place.distanceInMeters)]
+          .filter(Boolean)
+          .join(' · ');
+        return L.marker([place.latitude, place.longitude], { icon: placePinIcon(place.category), keyboard: false })
+          .bindTooltip(escapeHtml(label), { direction: 'top', offset: [0, -12] });
+      }),
+    ).addTo(map);
+    return () => {
+      layer.remove();
+    };
+  }, [places, mapReady]);
 
   // Handle window resize to fix map display issues
   useEffect(() => {

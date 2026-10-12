@@ -2,9 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button, Spinner, Carousel, Table } from 'react-bootstrap';
 import { useRealEstate } from '../context/RealEstateContext';
-import { RealEstate } from '../types/realEstate';
+import { AreaPriceComparison, RealEstate } from '../types/realEstate';
 import { ArrowLeft, ArrowUpRight, Building, ExclamationTriangle, GeoAlt } from 'react-bootstrap-icons';
-import { fetchRealEstateById } from '../services/RealEstateService';
+import { fetchAreaPriceComparison, fetchNearbyPlaces, fetchRealEstateById } from '../services/RealEstateService';
+import NearbyPlaces from '../components/NearbyPlaces';
+import { NearbyPlace } from '../types/places';
+import AreaPrice from '../components/AreaPrice';
+import FavoriteButton from '../components/FavoriteButton';
 import OpenStreetMap from '../components/OpenStreetMap';
 import { EmptyState } from '../components/ui';
 import { TRANSACTION_TYPE_LABELS } from '../types/property';
@@ -33,11 +37,34 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
+  const [areaPrice, setAreaPrice] = useState<AreaPriceComparison | null>(null);
+  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
 
   useEffect(() => {
     if (id) {
       loadRealEstateDetails(id);
     }
+  }, [id]);
+
+  // optional extra: the detail stays as it is when the comparison can't be made or fails
+  useEffect(() => {
+    setAreaPrice(null);
+    if (!id) return;
+    const controller = new AbortController();
+    fetchAreaPriceComparison(id, controller.signal)
+      .then(setAreaPrice)
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [id]);
+
+  useEffect(() => {
+    setNearbyPlaces([]);
+    if (!id) return;
+    const controller = new AbortController();
+    fetchNearbyPlaces(id, controller.signal)
+      .then(setNearbyPlaces)
+      .catch(() => undefined);
+    return () => controller.abort();
   }, [id]);
 
   const loadRealEstateDetails = async (estateId: string) => {
@@ -137,18 +164,23 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
     <>
       {backLink}
 
-      <div className="detail-eyebrow">
-        {[typeLabel(realEstate.mainCategory, realEstate.subCategory), TRANSACTION_TYPE_LABELS[realEstate.transactionType]]
-          .filter(Boolean)
-          .join(' · ')}
-      </div>
-      <h1 className="detail-title">{realEstate.name}</h1>
-      {address && (
-        <div className="detail-address">
-          <GeoAlt size={14} />
-          {address}
+      <div className="detail-head">
+        <div>
+          <div className="detail-eyebrow">
+            {[typeLabel(realEstate.mainCategory, realEstate.subCategory), TRANSACTION_TYPE_LABELS[realEstate.transactionType]]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
+          <h1 className="detail-title">{realEstate.name}</h1>
+          {address && (
+            <div className="detail-address">
+              <GeoAlt size={14} />
+              {address}
+            </div>
+          )}
         </div>
-      )}
+        <FavoriteButton listingId={realEstate.id} variant="button" />
+      </div>
 
       <div className="detail-grid">
         <div style={{ minWidth: 0 }}>
@@ -241,9 +273,18 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
               </a>
             </div>
             <div className="map-frame">
-              <OpenStreetMap realEstate={realEstate} height="380px" />
+              <OpenStreetMap realEstate={realEstate} height="380px" places={nearbyPlaces} />
             </div>
           </section>
+
+          {nearbyPlaces.length > 0 && (
+            <section className="section">
+              <div className="section-head">
+                <h2 className="section-title">Nearby</h2>
+              </div>
+              <NearbyPlaces places={nearbyPlaces} />
+            </section>
+          )}
 
           {sources.length > 1 && (
             <section className="section">
@@ -307,6 +348,10 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
                 <span>{formatPricePerM2(realEstate.pricePerM2, realEstate.currency)}</span>
               )}
             </div>
+
+            {areaPrice && (
+              <AreaPrice comparison={areaPrice} buildingType={realEstate.mainCategory} currency={realEstate.currency} />
+            )}
 
             <Button
               variant="primary"

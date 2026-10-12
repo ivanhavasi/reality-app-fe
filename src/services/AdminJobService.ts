@@ -21,5 +21,11 @@ const startJob = async (path: string, building: BuildingType, transaction: Trans
 export const startScrapeJob = (building: BuildingType, transaction: TransactionType) =>
   startJob('scrape', building, transaction);
 
+export const startPlacesImportJob = async (): Promise<AdminJob> => {
+  const res = await apiRequest(`${API_BASE_URL}/api/admin/jobs/import-places`, { method: 'POST', headers: getAuthHeaders() });
+  if (!res.ok) await handleApiError(res, 'Failed to start the job');
+  return res.json();
+};
+
 export const startCoordinatesBackfillJob = (building: BuildingType, transaction: TransactionType) =>
   startJob('backfill-coordinates', building, transaction);
