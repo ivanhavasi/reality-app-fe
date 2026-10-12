@@ -1,406 +1,326 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import Supercluster from 'supercluster';
 import './OpenStreetMap.css';
-import { RealEstate } from '../types/realEstate';
 import { useNavigate } from 'react-router-dom';
-import { escapeHtml, formatArea, formatCompactPrice, formatPrice, formatPricePerM2, subCategoryLabel } from '../utils/format';
-import { getLowestPrice, localityToString } from '../utils/realEstate';
-import { createTileLayer, PRAGUE_CENTER, pricePinIcon } from '../utils/map';
 import { Spinner } from 'react-bootstrap';
+import { RealEstateMapPoint } from '../types/realEstate';
+import { escapeHtml, formatArea, formatCompactPrice, formatPrice, formatPricePerM2, subCategoryLabel } from '../utils/format';
+import { localityToString } from '../utils/realEstate';
+import { applyMapStyle, clusterIcon, MapStyle, PRAGUE_CENTER, pricePinIcon } from '../utils/map';
+import MapStyleSwitch, { useMapStyle } from './MapStyleSwitch';
+import { PLACEHOLDER_IMAGE, showPlaceholder } from '../utils/placeholder';
 
 interface MultiRealEstateMapProps {
-    realEstates: RealEstate[];
+    points: RealEstateMapPoint[];
+    loading?: boolean;
+    // the backend's cap; reaching it means older listings were left off the map
+    limit?: number;
     height?: string;
+    // identifies the filter set; returning with the same one restores the last map position instead of refitting
+    viewKey?: string;
 }
 
-// Shared map utilities - extracted from OpenStreetMap.tsx
-class MapUtilities {
-    static initializeMapContainer(mapRef: React.RefObject<HTMLDivElement | null>): L.Map {
-        if (!mapRef.current) {
-            throw new Error('Map container not found');
-        }
-
-        // Get container dimensions and set explicit dimensions
-        const containerWidth = mapRef.current.clientWidth;
-        const containerHeight = mapRef.current.clientHeight;
-
-        if (containerWidth > 0) {
-            mapRef.current.style.width = `${containerWidth}px`;
-        } else {
-            mapRef.current.style.width = '100%';
-        }
-
-        if (containerHeight > 0) {
-            mapRef.current.style.height = `${containerHeight}px`;
-        } else {
-            mapRef.current.style.height = '100%';
-        }
-
-        // Initialize the map
-        const map = L.map(mapRef.current, {
-            center: PRAGUE_CENTER,
-            zoom: 11,
-            zoomControl: true,
-            attributionControl: true,
-            fadeAnimation: true,
-            markerZoomAnimation: true,
-            trackResize: true,
-        });
-
-        const tileLayer = createTileLayer();
-
-        tileLayer.on('tileerror', (error) => {
-            console.warn('Tile loading error:', error);
-        });
-
-        tileLayer.addTo(map);
-        return map;
-    }
-
-    static invalidateMapSize(map: L.Map) {
-        map.invalidateSize(true);
-
-        const invalidateWithDelay = () => {
-            if (map) {
-                map.invalidateSize(true);
-            }
-        };
-
-        setTimeout(invalidateWithDelay, 100);
-        setTimeout(invalidateWithDelay, 300);
-        setTimeout(invalidateWithDelay, 500);
-    }
-
-    static async geocodeAddress(locality: any): Promise<[number, number] | null> {
-        const { city, district, street, streetNumber } = locality;
-
-        const searchQuery = [];
-        if (street) {
-            if (streetNumber) {
-                searchQuery.push(`${street} ${streetNumber}`);
-            } else {
-                searchQuery.push(street);
-            }
-        }
-        if (district) searchQuery.push(district);
-        if (city) searchQuery.push(city);
-        searchQuery.push('Czech Republic');
-
-        if (searchQuery.length === 1) {
-            return null; // Only "Czech Republic", not enough to geocode
-        }
-
-        const searchAddress = searchQuery.join(', ');
-        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddress)}&limit=1&countrycodes=cz`;
-
-        try {
-            const response = await fetch(nominatimUrl, {
-                headers: { 'User-Agent': 'RealEstateApp/1.0' }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (data && data.length > 0) {
-                const result = data[0];
-                const lat = parseFloat(result.lat);
-                const lon = parseFloat(result.lon);
-
-                if (!isNaN(lat) && !isNaN(lon)) {
-                    return [lat, lon];
-                }
-            }
-            return null;
-        } catch (error) {
-            console.warn(`Geocoding failed for address: ${searchAddress}`, error);
-            return null;
-        }
-    }
-
-    static getAddressString(locality: any): string {
-        const { city, district, street, streetNumber } = locality;
-        const parts = [];
-        if (street) parts.push(street);
-        if (streetNumber) parts.push(streetNumber);
-        if (district) parts.push(district);
-        if (city) parts.push(city);
-        return parts.join(', ') || 'Address not available';
-    }
+interface SavedView {
+    viewKey: string;
+    lat: number;
+    lng: number;
+    zoom: number;
+    // marker whose popup was open
+    popup: string | null;
 }
 
-const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ realEstates, height = '400px' }) => {
-    const navigate = useNavigate();
-    const mapRef = useRef<HTMLDivElement>(null);
-    const mapInstanceRef = useRef<L.Map | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const markersRef = useRef<L.Marker[]>([]);
-    const geocodingQueueRef = useRef<RealEstate[]>([]);
+const VIEW_STORAGE_ITEM = 'listingsMapView';
 
-    const createMarkerForEstate = (estate: RealEstate, location: [number, number], map: L.Map): L.Marker => {
-        const price = getLowestPrice(estate);
-        const marker = L.marker(location, {
-            icon: pricePinIcon(escapeHtml(formatCompactPrice(price, estate.currency))),
-            riseOnHover: true,
-        });
+const readSavedView = (viewKey?: string): SavedView | null => {
+    if (!viewKey) return null;
+    try {
+        const saved: SavedView | null = JSON.parse(sessionStorage.getItem(VIEW_STORAGE_ITEM) ?? 'null');
+        return saved?.viewKey === viewKey ? saved : null;
+    } catch {
+        return null;
+    }
+};
 
-        const name = escapeHtml(estate.name);
-        const summary = [
-            subCategoryLabel(estate.mainCategory, estate.subCategory),
-            formatArea(estate.sizeInM2),
-            estate.mainCategory === 'LAND' && estate.pricePerM2 ? formatPricePerM2(estate.pricePerM2, estate.currency) : '',
-        ].filter(Boolean).join(' · ');
+const saveView = (viewKey: string, map: L.Map, popup: string | null) => {
+    const { lat, lng } = map.getCenter();
+    const view: SavedView = { viewKey, lat, lng, zoom: map.getZoom(), popup };
+    try {
+        sessionStorage.setItem(VIEW_STORAGE_ITEM, JSON.stringify(view));
+    } catch {
+        // private mode or full storage: the map just refits next time
+    }
+};
 
-        const image = estate.images && estate.images.length > 0
-            ? `<img src="${escapeHtml(estate.images[0])}" alt="">`
-            : '';
+// listings sharing exact coordinates (flats in one building) become one location, so none hide under another
+interface Location {
+    points: RealEstateMapPoint[];
+}
 
-        const popupContent = `
+interface ClusterTotals {
+    listings: number;
+}
+
+// clusters exist up to this zoom; past it a cluster can't split any further
+const CLUSTER_MAX_ZOOM = 18;
+
+const createIndex = (locations: Supercluster.PointFeature<Location>[]) =>
+    new Supercluster<Location, ClusterTotals>({
+        radius: 56,
+        // supercluster assumes 512 px tiles; Leaflet's are 256, so without this the radius is halved
+        extent: 256,
+        maxZoom: CLUSTER_MAX_ZOOM,
+        // a pair stays as two price labels, only 3+ nearby locations become a numbered circle
+        minPoints: 3,
+        map: properties => ({ listings: properties.points.length }),
+        reduce: (totals, properties) => {
+            totals.listings += properties.listings;
+        },
+    }).load(locations);
+
+const summary = (point: RealEstateMapPoint) => [
+    subCategoryLabel(point.mainCategory, point.subCategory),
+    formatArea(point.sizeInM2),
+    point.mainCategory === 'LAND' && point.pricePerM2 ? formatPricePerM2(point.pricePerM2, point.currency) : '',
+].filter(Boolean).join(' · ');
+
+const imageHtml = (src: string | null) =>
+    src ? `<img src="${escapeHtml(src)}" alt="">` : `<img src="${PLACEHOLDER_IMAGE}" class="placeholder-img" alt="">`;
+
+const popupHtml = (point: RealEstateMapPoint) => `
       <div class="map-popup">
-        ${image}
+        ${imageHtml(point.image)}
         <div class="map-popup-body">
-          <div class="map-popup-price">${escapeHtml(formatPrice(price, estate.currency))}</div>
-          <div class="map-popup-title">${name}</div>
-          <div class="map-popup-meta">${escapeHtml(summary)}</div>
-          <div class="map-popup-meta">${escapeHtml(localityToString(estate.locality, true))}</div>
-          <button class="map-popup-btn" data-estate-id="${escapeHtml(estate.id)}">View listing</button>
+          <div class="map-popup-price">${escapeHtml(formatPrice(point.lowestPrice, point.currency))}</div>
+          <div class="map-popup-title">${escapeHtml(point.name)}</div>
+          <div class="map-popup-meta">${escapeHtml(summary(point))}</div>
+          <div class="map-popup-meta">${escapeHtml(localityToString(point.locality, true))}</div>
+          <button class="map-popup-btn" data-estate-id="${escapeHtml(point.id)}">View listing</button>
         </div>
       </div>`;
 
-        marker.bindPopup(popupContent);
-        marker.addTo(map);
-        markersRef.current.push(marker);
-        return marker;
-    };
+const listPopupHtml = (points: RealEstateMapPoint[]) => `
+      <div class="map-popup">
+        <div class="map-popup-list-head">${points.length} listings here</div>
+        <div class="map-popup-list">
+          ${points.map(point => `
+            <button class="map-popup-row" data-estate-id="${escapeHtml(point.id)}">
+              ${imageHtml(point.image)}
+              <span>
+                <span class="map-popup-price">${escapeHtml(formatPrice(point.lowestPrice, point.currency))}</span>
+                <span class="map-popup-meta">${escapeHtml(summary(point))}</span>
+              </span>
+            </button>`).join('')}
+        </div>
+      </div>`;
 
-    // Process geocoding in the background after initial map load
-    const processGeocodingQueue = async () => {
-        const properties = geocodingQueueRef.current;
-        if (properties.length === 0 || !mapInstanceRef.current) return;
+const sortByPrice = (points: RealEstateMapPoint[]) =>
+    [...points].sort((a, b) => (a.lowestPrice <= 0 ? 1 : b.lowestPrice <= 0 ? -1 : a.lowestPrice - b.lowestPrice));
 
-        // Process in smaller batches to be API-friendly
-        const batchSize = 2;
-        const delay = 300; // ms between batches
+const locationLabel = (points: RealEstateMapPoint[]) => {
+    const [cheapest] = sortByPrice(points);
+    const price = formatCompactPrice(cheapest.lowestPrice, cheapest.currency);
+    return escapeHtml(points.length > 1 ? `${price} +${points.length - 1}` : price);
+};
 
-        for (let i = 0; i < properties.length; i += batchSize) {
-            if (!mapInstanceRef.current) break; // Stop if map was unmounted
+const toLocations = (points: RealEstateMapPoint[]): Supercluster.PointFeature<Location>[] => {
+    const byCoordinates = new Map<string, RealEstateMapPoint[]>();
+    points.forEach(point => {
+        const { latitude, longitude } = point.locality;
+        if (latitude == null || longitude == null) return;
+        const key = `${latitude},${longitude}`;
+        byCoordinates.set(key, [...(byCoordinates.get(key) ?? []), point]);
+    });
+    return Array.from(byCoordinates.values(), group => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [group[0].locality.longitude!, group[0].locality.latitude!] },
+        properties: { points: group },
+    }));
+};
 
-            const batch = properties.slice(i, i + batchSize);
-            const batchPromises = batch.map(async (estate) => {
-                try {
-                    const coords = await MapUtilities.geocodeAddress(estate.locality);
-                    if (coords && mapInstanceRef.current) {
-                        createMarkerForEstate(estate, coords, mapInstanceRef.current);
-                    }
-                } catch (err) {
-                    console.warn(`Geocoding failed for property ${estate.id}`, err);
-                }
-            });
+const MultiRealEstateMap: React.FC<MultiRealEstateMapProps> = ({ points, loading = false, limit, height = '400px', viewKey }) => {
+    const navigate = useNavigate();
+    const containerRef = useRef<HTMLDivElement>(null);
+    const mapRef = useRef<L.Map | null>(null);
+    const layerRef = useRef<L.LayerGroup | null>(null);
+    const indexRef = useRef<Supercluster<Location, ClusterTotals> | null>(null);
+    // markers are reused across re-renders, otherwise the map panning to fit an open popup would close it
+    const markersRef = useRef(new Map<string, L.Marker>());
+    const viewKeyRef = useRef(viewKey);
+    viewKeyRef.current = viewKey;
+    // set when the map opened at a saved position, so the first load of the same results doesn't refit it
+    const restoredViewKeyRef = useRef<string | null>(null);
+    const [mapStyle, setMapStyle] = useMapStyle();
+    const tileLayerRef = useRef<L.TileLayer | null>(null);
+    const appliedStyleRef = useRef<MapStyle | null>(null);
+    const restoredPopupRef = useRef<string | null>(null);
+    const openPopupRef = useRef<string | null>(null);
+    // tearing the map down closes its popup; that must not be saved as the user closing it
+    const unmountingRef = useRef(false);
 
-            await Promise.all(batchPromises);
-
-            // Don't delay after the last batch
-            if (i + batchSize < properties.length) {
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
+    const persistView = () => {
+        if (mapRef.current && viewKeyRef.current) {
+            saveView(viewKeyRef.current, mapRef.current, openPopupRef.current);
         }
-
-        // Clear the queue after processing
-        geocodingQueueRef.current = [];
     };
 
-    const initializeMap = async () => {
-        try {
-            setLoading(true);
-            setError(null);
+    const renderMarkers = () => {
+        const map = mapRef.current;
+        const layer = layerRef.current;
+        const index = indexRef.current;
+        if (!map || !layer || !index) return;
 
-            // Clean up existing map and markers
-            if (mapInstanceRef.current) {
-                mapInstanceRef.current.remove();
-                mapInstanceRef.current = null;
-            }
+        const bounds = map.getBounds().pad(0.25);
+        const features = index.getClusters(
+            [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+            map.getZoom(),
+        );
 
-            markersRef.current = [];
-            geocodingQueueRef.current = [];
+        const next = new Map<string, L.Marker>();
+        features.forEach(feature => {
+            const [lng, lat] = feature.geometry.coordinates;
+            const properties = feature.properties;
 
-            if (mapRef.current) {
-                mapRef.current.innerHTML = '';
-            }
-
-            // Initialize map using shared utilities
-            const map = MapUtilities.initializeMapContainer(mapRef);
-            mapInstanceRef.current = map;
-
-            // Apply aggressive map invalidation (similar to OpenStreetMap.tsx)
-            map.invalidateSize(true);
-
-            // Multiple invalidations with timeouts
-            const invalidateMapAggressively = () => {
-                if (mapInstanceRef.current) {
-                    mapInstanceRef.current.invalidateSize(true);
-                    const container = mapInstanceRef.current.getContainer();
-                    if (container) {
-                        // Force browser repaint
-                        const width = container.offsetWidth;
-                        const height = container.offsetHeight;
-                        console.log(`Map container size: ${width}x${height}`);
-                    }
-                }
-            };
-
-            // Multiple invalidations at different times
-            setTimeout(invalidateMapAggressively, 100);
-            setTimeout(invalidateMapAggressively, 300);
-            setTimeout(invalidateMapAggressively, 500);
-
-            map.whenReady(() => {
-                try {
-                    // Separate properties with and without coordinates
-                    const propertiesWithCoords: RealEstate[] = [];
-                    const propertiesWithoutCoords: RealEstate[] = [];
-                    const validCoordinates: [number, number][] = [];
-
-                    // First pass: only process properties with coordinates
-                    realEstates.forEach(estate => {
-                        const { latitude, longitude } = estate.locality;
-                        if (latitude && longitude) {
-                            propertiesWithCoords.push(estate);
-                            validCoordinates.push([latitude, longitude]);
-                            createMarkerForEstate(estate, [latitude, longitude], map);
-                        } else {
-                            propertiesWithoutCoords.push(estate);
-                        }
-                    });
-
-                    // Queue properties without coordinates for background processing
-                    geocodingQueueRef.current = propertiesWithoutCoords;
-
-                    // Show map immediately with properties that have coordinates
-                    if (validCoordinates.length > 0) {
-                        try {
-                            // Give the map a moment to stabilize
-                            setTimeout(() => {
-                                if (!mapInstanceRef.current) return;
-
-                                // Force size invalidation again
-                                mapInstanceRef.current.invalidateSize(true);
-
-                                if (validCoordinates.length === 1) {
-                                    mapInstanceRef.current.setView(validCoordinates[0], 15);
-                                } else {
-                                    try {
-                                        const bounds = L.latLngBounds(validCoordinates);
-                                        mapInstanceRef.current.fitBounds(bounds, {
-                                            padding: [50, 50],
-                                            maxZoom: 15,
-                                            animate: false // Disable animation for better performance
-                                        });
-                                    } catch (err) {
-                                        console.warn('Error fitting bounds, falling back to default view:', err);
-                                        mapInstanceRef.current.setView(PRAGUE_CENTER, 11);
-                                    }
-                                }
-                            }, 100);
-                        } catch (err) {
-                            console.warn('Error setting map view:', err);
-                            if (mapInstanceRef.current) {
-                                mapInstanceRef.current.setView(PRAGUE_CENTER, 11);
-                            }
-                        }
+            if ('cluster' in properties && properties.cluster) {
+                const key = `c${properties.cluster_id}`;
+                const marker = markersRef.current.get(key) ?? L.marker([lat, lng], {
+                    icon: clusterIcon(properties.listings),
+                    riseOnHover: true,
+                }).on('click', () => {
+                    const expansionZoom = index.getClusterExpansionZoom(properties.cluster_id);
+                    if (expansionZoom <= CLUSTER_MAX_ZOOM) {
+                        map.setView([lat, lng], expansionZoom);
                     } else {
-                        if (mapInstanceRef.current) {
-                            mapInstanceRef.current.setView(PRAGUE_CENTER, 11);
-                        }
+                        const leaves = index.getLeaves(properties.cluster_id, Infinity).flatMap(leaf => leaf.properties.points);
+                        L.popup().setLatLng([lat, lng]).setContent(listPopupHtml(sortByPrice(leaves))).openOn(map);
                     }
-
-                    // Handle popup interactions
-                    map.on('popupopen', (e) => {
-                        const popup = e.popup;
-                        const container = popup.getElement();
-                        const viewBtn = container?.querySelector('.map-popup-btn');
-
-                        if (viewBtn) {
-                            viewBtn.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                const estateId = (e.currentTarget as HTMLElement).getAttribute('data-estate-id');
-                                if (estateId) {
-                                    navigate(`/real-estates/${estateId}`);
-                                }
-                            });
-                        }
+                });
+                next.set(key, marker);
+            } else {
+                const group = (properties as Location).points;
+                const key = `p${group.map(point => point.id).join(',')}`;
+                const marker = markersRef.current.get(key) ?? L.marker([lat, lng], {
+                    icon: pricePinIcon(locationLabel(group)),
+                    riseOnHover: true,
+                })
+                    .bindPopup(group.length > 1 ? listPopupHtml(sortByPrice(group)) : popupHtml(group[0]))
+                    .on('popupopen', () => {
+                        openPopupRef.current = key;
+                        persistView();
+                    })
+                    .on('popupclose', () => {
+                        if (unmountingRef.current || openPopupRef.current !== key) return;
+                        openPopupRef.current = null;
+                        persistView();
                     });
+                next.set(key, marker);
+            }
+        });
 
-                    // Map is loaded with coordinate-based properties, mark as ready
-                    setLoading(false);
-
-                    // Start background geocoding AFTER the map is shown
-                    if (geocodingQueueRef.current.length > 0) {
-                        // Slight delay to ensure map is fully rendered
-                        setTimeout(() => {
-                            processGeocodingQueue().catch(err => {
-                                console.warn('Background geocoding error:', err);
-                            });
-                        }, 1000);
-                    }
-                } catch (err) {
-                    console.error('Error during map initialization:', err);
-                    setError('Failed to initialize map');
-                    setLoading(false);
-                }
-            });
-        } catch (err) {
-            console.error('Error initializing map component:', err);
-            setError('Failed to initialize map component');
-            setLoading(false);
-        }
+        markersRef.current.forEach((marker, key) => !next.has(key) && layer.removeLayer(marker));
+        next.forEach((marker, key) => !markersRef.current.has(key) && layer.addLayer(marker));
+        markersRef.current = next;
     };
 
     useEffect(() => {
-        initializeMap();
+        if (!containerRef.current) return;
 
-        // Cleanup on unmount
+        const saved = readSavedView(viewKey);
+        restoredViewKeyRef.current = saved?.viewKey ?? null;
+        restoredPopupRef.current = saved?.popup ?? null;
+        unmountingRef.current = false;
+        const map = L.map(containerRef.current, {
+            center: saved ? [saved.lat, saved.lng] : PRAGUE_CENTER,
+            zoom: saved?.zoom ?? 11,
+        });
+        layerRef.current = L.layerGroup().addTo(map);
+        map.on('moveend', renderMarkers);
+        map.on('moveend', persistView);
+
+        map.on('popupopen', (e) => {
+            const element = e.popup.getElement();
+            element?.querySelectorAll<HTMLElement>('[data-estate-id]').forEach(target => {
+                target.onclick = () => navigate(`/real-estates/${target.dataset.estateId}`);
+            });
+            element?.querySelectorAll('img').forEach(image => {
+                if (image.complete && image.naturalWidth === 0) showPlaceholder(image);
+                else image.onerror = () => showPlaceholder(image);
+            });
+        });
+
+        const resizeObserver = new ResizeObserver(() => map.invalidateSize());
+        resizeObserver.observe(containerRef.current);
+        mapRef.current = map;
+
         return () => {
-            if (mapInstanceRef.current) {
-                mapInstanceRef.current.remove();
-                mapInstanceRef.current = null;
-            }
-            markersRef.current = [];
-            geocodingQueueRef.current = [];
-        };
-    }, [realEstates]);
-
-    // Resize observer to handle dynamic height changes
-    useEffect(() => {
-        const handleResize = () => {
-            if (mapInstanceRef.current) {
-                MapUtilities.invalidateMapSize(mapInstanceRef.current);
-            }
-        };
-
-        const resizeObserver = new ResizeObserver(handleResize);
-        if (mapRef.current) {
-            resizeObserver.observe(mapRef.current);
-        }
-
-        return () => {
+            unmountingRef.current = true;
             resizeObserver.disconnect();
+            map.remove();
+            mapRef.current = null;
+            tileLayerRef.current = null;
+            appliedStyleRef.current = null;
+            layerRef.current = null;
+            markersRef.current = new Map();
         };
-    }, [mapRef]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    if (error) {
-        return <div className="loading-block" style={{ height, minHeight: 0 }}>{error}</div>;
-    }
+    useEffect(() => {
+        const map = mapRef.current;
+        const layer = layerRef.current;
+        if (!map || !layer) return;
+
+        const locations = toLocations(points);
+        indexRef.current = createIndex(locations);
+        layer.clearLayers();
+        markersRef.current = new Map();
+
+        const coordinates = locations.map(({ geometry: { coordinates: [lng, lat] } }): [number, number] => [lat, lng]);
+        const backOnSameResults = coordinates.length > 0 && restoredViewKeyRef.current === viewKeyRef.current;
+        if (coordinates.length > 0) {
+            restoredViewKeyRef.current = null;
+            if (!backOnSameResults && coordinates.length === 1) {
+                map.setView(coordinates[0], 15);
+            } else if (!backOnSameResults) {
+                map.fitBounds(L.latLngBounds(coordinates), { padding: [40, 40], maxZoom: 15, animate: false });
+            }
+        }
+        // fitBounds skips moveend when the view doesn't change
+        renderMarkers();
+
+        if (coordinates.length > 0) {
+            const popup = backOnSameResults ? restoredPopupRef.current : null;
+            restoredPopupRef.current = null;
+            if (popup) markersRef.current.get(popup)?.openPopup();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [points]);
+
+    useEffect(() => {
+        if (!mapRef.current) return;
+        tileLayerRef.current = applyMapStyle(mapRef.current, tileLayerRef.current, appliedStyleRef.current, mapStyle);
+        appliedStyleRef.current = mapStyle;
+    }, [mapStyle]);
+
+    const capped = limit !== undefined && points.length >= limit;
 
     return (
         <div className="map-container" style={{ height }}>
-            <div ref={mapRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
-            {loading && (
+            <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+            {loading && points.length === 0 && (
                 <div className="loading-block" style={{ position: 'absolute', inset: 0, zIndex: 1000, minHeight: 0, background: 'var(--app-surface-2)' }}>
                     <Spinner animation="border" size="sm" role="status" />
                     Loading map…
+                </div>
+            )}
+            <MapStyleSwitch value={mapStyle} onChange={setMapStyle} />
+            {(points.length > 0 || !loading) && (
+                <div className="map-count" title="Listings without coordinates from the portal aren't shown on the map">
+                    {loading && <Spinner animation="border" size="sm" role="status" />}
+                    {capped
+                        ? `Newest ${points.length.toLocaleString('cs-CZ')} on map`
+                        : `${points.length.toLocaleString('cs-CZ')} on map`}
                 </div>
             )}
         </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Icon } from 'react-bootstrap-icons';
+import { PLACEHOLDER_IMAGE } from '../utils/placeholder';
 
 interface PageHeaderProps {
   title: React.ReactNode;
@@ -85,16 +86,21 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon: StateIcon, title, 
 interface ListingImageProps {
   src?: string | null;
   alt: string;
-  fallbackIcon: Icon;
   children?: React.ReactNode;
 }
 
-export const ListingImage: React.FC<ListingImageProps> = ({ src, alt, fallbackIcon: FallbackIcon, children }) => {
+export const ListingImage: React.FC<ListingImageProps> = ({ src, alt, children }) => {
   const [failed, setFailed] = useState(false);
+  const placeholder = !src || failed;
   return (
     <div className="listing-media">
-      <FallbackIcon size={28} />
-      {src && !failed && <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />}
+      <img
+        src={placeholder ? PLACEHOLDER_IMAGE : src}
+        className={placeholder ? 'placeholder-img' : undefined}
+        alt={alt}
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
       {children}
     </div>
   );

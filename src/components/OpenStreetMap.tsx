@@ -4,7 +4,8 @@ import 'leaflet/dist/leaflet.css';
 import './OpenStreetMap.css';
 import { RealEstate } from '../types/realEstate';
 import { escapeHtml } from '../utils/format';
-import { createTileLayer, locationPinIcon } from '../utils/map';
+import { applyMapStyle, locationPinIcon, MapStyle } from '../utils/map';
+import MapStyleSwitch, { useMapStyle } from './MapStyleSwitch';
 import { Spinner } from 'react-bootstrap';
 import { GeoAlt } from 'react-bootstrap-icons';
 
@@ -18,6 +19,18 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapStyle, setMapStyle] = useMapStyle();
+  // initializeMap runs from older closures, so it reads the current style through a ref
+  const mapStyleRef = useRef(mapStyle);
+  mapStyleRef.current = mapStyle;
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const appliedStyleRef = useRef<MapStyle | null>(null);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    tileLayerRef.current = applyMapStyle(mapInstanceRef.current, tileLayerRef.current, appliedStyleRef.current, mapStyle);
+    appliedStyleRef.current = mapStyle;
+  }, [mapStyle]);
 
   const { latitude, longitude, city, district, street, streetNumber } = realEstate.locality;
 
@@ -81,14 +94,8 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
         trackResize: true,
       });
 
-      const tileLayer = createTileLayer();
-
-      // Add error handling for tile loading issues
-      tileLayer.on('tileerror', (error) => {
-        console.warn('Tile loading error:', error);
-      });
-
-      tileLayer.addTo(map);
+      tileLayerRef.current = applyMapStyle(map, null, null, mapStyleRef.current);
+      appliedStyleRef.current = mapStyleRef.current;
       mapInstanceRef.current = map;
 
       // Critical: Force multiple invalidations with delays between them
@@ -325,6 +332,7 @@ const OpenStreetMap: React.FC<OpenStreetMapProps> = ({ realEstate, height = '450
         style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0, overflow: 'hidden' }}
         className="leaflet-container"
       />
+      <MapStyleSwitch value={mapStyle} onChange={setMapStyle} />
     </div>
   );
 };

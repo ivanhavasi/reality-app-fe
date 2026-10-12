@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button, Form, Pagination, Collapse } from 'react-bootstrap';
 import { ArrowCounterclockwise, ChevronLeft, ChevronRight, ExclamationTriangle, Search, Sliders, X } from 'react-bootstrap-icons';
 import { useRealEstate } from '../context/RealEstateContext';
-import { fetchRealEstates, SortDirection } from '../services/RealEstateService';
-import { RealEstate } from '../types/realEstate';
+import { fetchRealEstateMapPoints, fetchRealEstates, FetchRealEstatesOptions, SortDirection } from '../services/RealEstateService';
+import { RealEstate, RealEstateMapPoint } from '../types/realEstate';
 import {
   BUILDING_TYPE_META,
   BuildingType,
@@ -33,6 +33,8 @@ interface SearchState {
   priceMin: number;
   priceMax: number;
 }
+
+const MAP_POINT_LIMIT = 500;
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -120,6 +122,8 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
   const requestSeqRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const debouncedSearchRef = useRef(initialState.search);
+  const [mapPoints, setMapPoints] = useState<RealEstateMapPoint[]>([]);
+  const [mapLoading, setMapLoading] = useState<boolean>(true);
 
   const itemsPerPage = 10;
   const sizeRange = SIZE_RANGE[building];
@@ -169,6 +173,36 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // the map covers every match (up to the backend cap), not just the current page
+  useEffect(() => {
+    const controller = new AbortController();
+    setMapLoading(true);
+    fetchRealEstateMapPoints({ ...currentFilters(), limit: MAP_POINT_LIMIT, signal: controller.signal })
+      .then(points => setMapPoints(points))
+      .catch(err => {
+        if (controller.signal.aborted) return;
+        console.error('Error loading map listings:', err);
+        setMapPoints([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setMapLoading(false);
+      });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortDirection, debouncedSearchTerm, transactionType, building, debouncedSizeMin, debouncedSizeMax, debouncedPriceMin, debouncedPriceMax]);
+
+  const currentFilters = (): FetchRealEstatesOptions => ({
+    sortDirection,
+    search: debouncedSearchTerm,
+    transaction: transactionType,
+    building,
+    subCategories: building === 'LAND' ? ENABLED_LAND_SUB_TYPES : [],
+    sizeMin: debouncedSizeMin,
+    sizeMax: debouncedSizeMax >= sizeRange.max ? OPEN_SIZE_MAX : debouncedSizeMax,
+    priceMin: debouncedPriceMin,
+    priceMax: debouncedPriceMax >= priceRange.max ? OPEN_PRICE_MAX : debouncedPriceMax,
+  });
+
   const loadRealEstates = async () => {
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -181,17 +215,9 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
       const offset = (currentPage - 1) * itemsPerPage;
 
       const results = await fetchRealEstates({
+        ...currentFilters(),
         offset,
         limit: itemsPerPage + 1, // one extra item tells us whether there is a next page
-        sortDirection,
-        search: debouncedSearchTerm,
-        transaction: transactionType,
-        building,
-        subCategories: building === 'LAND' ? ENABLED_LAND_SUB_TYPES : [],
-        sizeMin: debouncedSizeMin,
-        sizeMax: debouncedSizeMax >= sizeRange.max ? OPEN_SIZE_MAX : debouncedSizeMax,
-        priceMin: debouncedPriceMin,
-        priceMax: debouncedPriceMax >= priceRange.max ? OPEN_PRICE_MAX : debouncedPriceMax,
         signal: controller.signal,
       });
 
@@ -464,12 +490,7 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
         </Collapse>
       </div>
 
-      {loading ? (
-        <>
-          <div className="skeleton mb-4" style={{ height: 'clamp(280px, 40vw, 420px)', borderRadius: 14 }} />
-          <ListingSkeletonGrid />
-        </>
-      ) : error ? (
+      {error ? (
         <EmptyState
           icon={ExclamationTriangle}
           title="Couldn't load listings"
@@ -481,7 +502,7 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
             </Button>
           }
         />
-      ) : realEstates.length === 0 ? (
+      ) : !loading && realEstates.length === 0 ? (
         <EmptyState
           icon={Search}
           title="No listings match"
@@ -499,40 +520,52 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
       ) : (
         <>
           <div className="map-frame mb-4">
-            <MultiRealEstateMap realEstates={realEstates} height="clamp(280px, 40vw, 420px)" />
+            <MultiRealEstateMap
+              points={mapPoints}
+              loading={mapLoading}
+              limit={MAP_POINT_LIMIT}
+              height="clamp(320px, 45vw, 520px)"
+              viewKey={JSON.stringify(currentFilters())}
+            />
           </div>
 
-          <div className="d-flex align-items-baseline justify-content-between mb-3">
-            <div className="text-2" style={{ fontSize: '0.875rem' }}>
-              Showing <span className="fw-semibold text-body tabular">{firstShown}–{lastShown}</span>
-              {debouncedSearchTerm && <> for “{debouncedSearchTerm}”</>}
-            </div>
-          </div>
+          {loading ? (
+            <ListingSkeletonGrid />
+          ) : (
+            <>
+              <div className="d-flex align-items-baseline justify-content-between mb-3">
+                <div className="text-2" style={{ fontSize: '0.875rem' }}>
+                  Showing <span className="fw-semibold text-body tabular">{firstShown}–{lastShown}</span>
+                  {debouncedSearchTerm && <> for “{debouncedSearchTerm}”</>}
+                </div>
+              </div>
 
-          <div className="listing-grid mb-5">
-            {realEstates.map((estate: RealEstate) => (
-              <RealEstateCard key={estate.id} estate={estate} />
-            ))}
-          </div>
+              <div className="listing-grid mb-5">
+                {realEstates.map((estate: RealEstate) => (
+                  <RealEstateCard key={estate.id} estate={estate} />
+                ))}
+              </div>
 
-          {paginationItems.length > 1 && (
-            <Pagination className="mb-0">
-              <Pagination.Prev
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={14} />
-              </Pagination.Prev>
-              {paginationItems}
-              <Pagination.Next
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={!hasMoreItems}
-                aria-label="Next page"
-              >
-                <ChevronRight size={14} />
-              </Pagination.Next>
-            </Pagination>
+              {paginationItems.length > 1 && (
+                <Pagination className="mb-0">
+                  <Pagination.Prev
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft size={14} />
+                  </Pagination.Prev>
+                  {paginationItems}
+                  <Pagination.Next
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={!hasMoreItems}
+                    aria-label="Next page"
+                  >
+                    <ChevronRight size={14} />
+                  </Pagination.Next>
+                </Pagination>
+              )}
+            </>
           )}
         </>
       )}

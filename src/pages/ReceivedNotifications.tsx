@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Building, ChevronLeft, ChevronRight, Inbox } from 'react-bootstrap-icons';
+import { Bell, ChevronLeft, ChevronRight, Inbox } from 'react-bootstrap-icons';
 import { fetchNotifications } from '../services/api';
 import { userService } from '../services/UserService';
-import { BUILDING_TYPE_META, BuildingType, isBuildingType } from '../types/property';
+import { BuildingType } from '../types/property';
 import { formatPrice, typeLabel } from '../utils/format';
 import { EmptyState, ListingImage, ListingSkeletonGrid, PageHeader } from '../components/ui';
 
@@ -135,14 +135,13 @@ const ReceivedNotifications = ({ token }: ReceivedNotificationsProps) => {
           <div className="listing-grid">
             {notifications.map((notification) => {
               const estate = notification.realEstate;
-              const TypeIcon = isBuildingType(estate.mainCategory) ? BUILDING_TYPE_META[estate.mainCategory].icon : Building;
               return (
                 <Link
                   key={`${notification.notificationId}-${estate.id}-${notification.sentAt}`}
                   to={`/real-estates/${estate.id}`}
                   className="listing-card"
                 >
-                  <ListingImage src={estate.image} alt={estate.name} fallbackIcon={TypeIcon}>
+                  <ListingImage src={estate.image} alt={estate.name}>
                     <div className="listing-tags">
                       <span className="media-tag">{estate.provider}</span>
                     </div>

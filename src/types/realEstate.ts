@@ -36,6 +36,21 @@ export interface RealEstate {
   duplicates: Duplicate[];
 }
 
+// slim listing from /api/real-estates/map; always has coordinates
+export interface RealEstateMapPoint {
+  id: string;
+  name: string;
+  price: number;
+  lowestPrice: number;
+  pricePerM2: number | null;
+  sizeInM2: number;
+  currency: string;
+  mainCategory: BuildingType;
+  subCategory: string | null;
+  locality: Locality;
+  image: string | null;
+}
+
 export interface RealEstateResponse {
   totalCount?: number;
   offset?: number;

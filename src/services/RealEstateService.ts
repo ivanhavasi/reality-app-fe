@@ -1,4 +1,4 @@
-import {RealEstate} from '../types/realEstate';
+import {RealEstate, RealEstateMapPoint} from '../types/realEstate';
 import {BuildingType, TransactionType} from '../types/property';
 import {API_BASE_URL, getAuthHeaders, handleApiError, apiRequest} from "./api";
 
@@ -32,9 +32,7 @@ export interface FetchRealEstatesOptions {
   signal?: AbortSignal;
 }
 
-export const fetchRealEstates = async ({
-  offset = 0,
-  limit = 10,
+const appendFilters = (url: URL, {
   sortDirection = 'DESC',
   search,
   transaction = 'SALE',
@@ -44,11 +42,7 @@ export const fetchRealEstates = async ({
   sizeMax,
   priceMin = 0,
   priceMax = 1000000000,
-  signal,
-}: FetchRealEstatesOptions): Promise<RealEstate[]> => {
-  const url = new URL(`${API_BASE_URL}/api/real-estates`);
-  url.searchParams.append('offset', offset.toString());
-  url.searchParams.append('limit', limit.toString());
+}: FetchRealEstatesOptions) => {
   url.searchParams.append('sortDirection', sortDirection);
 
   if (search && search.trim() !== '') {
@@ -62,6 +56,14 @@ export const fetchRealEstates = async ({
   url.searchParams.append('sizeMax', sizeMax.toString());
   url.searchParams.append('priceMin', priceMin.toString());
   url.searchParams.append('priceMax', priceMax.toString());
+};
+
+export const fetchRealEstates = async (options: FetchRealEstatesOptions): Promise<RealEstate[]> => {
+  const { offset = 0, limit = 10, signal } = options;
+  const url = new URL(`${API_BASE_URL}/api/real-estates`);
+  url.searchParams.append('offset', offset.toString());
+  url.searchParams.append('limit', limit.toString());
+  appendFilters(url, options);
 
   const res = await apiRequest(url.toString(), {
     headers: getAuthHeaders(),
@@ -82,6 +84,22 @@ export const fetchRealEstates = async ({
     // Default fallback
     return [];
   }
+};
+
+// the backend caps this at 500, newest first
+export const fetchRealEstateMapPoints = async (options: FetchRealEstatesOptions): Promise<RealEstateMapPoint[]> => {
+  const url = new URL(`${API_BASE_URL}/api/real-estates/map`);
+  if (options.limit) url.searchParams.append('limit', options.limit.toString());
+  appendFilters(url, options);
+
+  const res = await apiRequest(url.toString(), {
+    headers: getAuthHeaders(),
+    signal: options.signal,
+  });
+
+  if (!res.ok) await handleApiError(res, 'Failed to fetch map listings');
+  const points = await res.json();
+  return Array.isArray(points) ? points : [];
 };
 
 export const realEstateService = {

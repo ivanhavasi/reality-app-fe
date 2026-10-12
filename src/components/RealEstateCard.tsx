@@ -2,8 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { RealEstate } from '../types/realEstate';
-import { BUILDING_TYPE_META, isBuildingType } from '../types/property';
-import { Building } from 'react-bootstrap-icons';
 import { formatArea, formatPrice, formatPricePerM2, subCategoryLabel } from '../utils/format';
 import { getLowerPriceProviders, getLowestPrice, localityToString } from '../utils/realEstate';
 import { ListingImage } from './ui';
@@ -15,7 +13,6 @@ interface RealEstateCardProps {
 const RealEstateCard: React.FC<RealEstateCardProps> = ({ estate }) => {
   const isLand = estate.mainCategory === 'LAND';
   const lowestPrice = getLowestPrice(estate);
-  const typeIcon = isBuildingType(estate.mainCategory) ? BUILDING_TYPE_META[estate.mainCategory].icon : Building;
   const subLabel = subCategoryLabel(estate.mainCategory, estate.subCategory);
   const address = localityToString(estate.locality);
   const sourceCount = estate.duplicates.length + 1;
@@ -27,7 +24,7 @@ const RealEstateCard: React.FC<RealEstateCardProps> = ({ estate }) => {
 
   return (
     <Link to={`/real-estates/${estate.id}`} className="listing-card">
-      <ListingImage src={estate.images?.[0]} alt={estate.name} fallbackIcon={typeIcon}>
+      <ListingImage src={estate.images?.[0]} alt={estate.name}>
         <div className="listing-tags">
           <span className="media-tag">{estate.provider}</span>
           {sourceCount > 1 && (

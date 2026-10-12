@@ -3,13 +3,14 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button, Spinner, Carousel, Table } from 'react-bootstrap';
 import { useRealEstate } from '../context/RealEstateContext';
 import { RealEstate } from '../types/realEstate';
-import { ArrowLeft, ArrowUpRight, Building, ExclamationTriangle, GeoAlt, Images } from 'react-bootstrap-icons';
+import { ArrowLeft, ArrowUpRight, Building, ExclamationTriangle, GeoAlt } from 'react-bootstrap-icons';
 import { fetchRealEstateById } from '../services/RealEstateService';
 import OpenStreetMap from '../components/OpenStreetMap';
 import { EmptyState } from '../components/ui';
 import { TRANSACTION_TYPE_LABELS } from '../types/property';
 import { buildingTypeLabel, formatArea, formatPrice, formatPricePerM2, subCategoryLabel, typeLabel } from '../utils/format';
 import { getLowestPrice, localityToString } from '../utils/realEstate';
+import { PLACEHOLDER_IMAGE, showPlaceholder } from '../utils/placeholder';
 
 interface RealEstateDetailProps {
   token?: string;
@@ -163,7 +164,12 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
                 >
                   {images.map((image, index) => (
                     <Carousel.Item key={index}>
-                      <img src={image} alt={`${realEstate.name} (${index + 1} of ${images.length})`} loading={index === 0 ? 'eager' : 'lazy'} />
+                      <img
+                        src={image}
+                        alt={`${realEstate.name} (${index + 1} of ${images.length})`}
+                        loading={index === 0 ? 'eager' : 'lazy'}
+                        onError={(e) => showPlaceholder(e.currentTarget)}
+                      />
                     </Carousel.Item>
                   ))}
                 </Carousel>
@@ -183,7 +189,7 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
                       onClick={() => setImageIndex(index)}
                       aria-label={`Show photo ${index + 1}`}
                     >
-                      <img src={image} alt="" loading="lazy" />
+                      <img src={image} alt="" loading="lazy" onError={(e) => showPlaceholder(e.currentTarget)} />
                     </button>
                   ))}
                 </div>
@@ -192,7 +198,7 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
           ) : (
             <div className="gallery gallery-empty">
               <div className="text-center">
-                <Images size={24} className="mb-2" />
+                <img src={PLACEHOLDER_IMAGE} alt="" width={96} height={96} />
                 <div>No photos for this listing</div>
               </div>
             </div>
