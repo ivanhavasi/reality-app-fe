@@ -66,6 +66,7 @@ The app uses `react-router-dom` v7 with conditional rendering based on authentic
   - `/notifications`: User's notification settings
   - `/sent-notifications`: Notifications received by the user
   - `/settings`: User settings
+  - `/stats`: Market stats per property type from `/api/statistics/market`; a second request with `groupBy=DISTRICT` feeds the "Price per m² by district" panel (`DistrictPrices`, merges the monthly rows weighted by count, skips "Praha N" values and districts under 5 listings)
   - `/admin` (admins only, own "Admin" sidebar section): Data jobs, starts scrapes and the coordinates backfill on the backend and polls `/api/admin/jobs` while one runs
 
 ### Layout Components

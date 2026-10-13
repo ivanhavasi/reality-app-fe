@@ -11,6 +11,7 @@ export interface MarketStatistics {
   avgPrice: number;
   avgPricePerM2: number | null;
   avgSize: number;
+  avgLandSize: number | null;
   minPrice: number;
   maxPrice: number;
   count: number;

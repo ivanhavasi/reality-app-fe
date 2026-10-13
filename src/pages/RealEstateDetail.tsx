@@ -11,7 +11,7 @@ import AreaPrice from '../components/AreaPrice';
 import FavoriteButton from '../components/FavoriteButton';
 import OpenStreetMap from '../components/OpenStreetMap';
 import { EmptyState } from '../components/ui';
-import { TRANSACTION_TYPE_LABELS } from '../types/property';
+import { SIZE_LABEL, TRANSACTION_TYPE_LABELS } from '../types/property';
 import { buildingTypeLabel, formatArea, formatPrice, formatPricePerM2, subCategoryLabel, typeLabel } from '../utils/format';
 import { getLowestPrice, localityToString } from '../utils/realEstate';
 import { PLACEHOLDER_IMAGE, showPlaceholder } from '../utils/placeholder';
@@ -131,6 +131,7 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
   }
 
   const isLand = realEstate.mainCategory === 'LAND';
+  const isHouse = realEstate.mainCategory === 'HOUSE';
   const isRent = realEstate.transactionType === 'RENT';
   const address = localityToString(realEstate.locality, true);
   const lowestPrice = getLowestPrice(realEstate);
@@ -154,8 +155,12 @@ const RealEstateDetail: React.FC<RealEstateDetailProps> = ({ token }) => {
   const facts = [
     { label: isRent ? 'Monthly rent' : 'Price', value: formatPrice(lowestPrice, realEstate.currency) },
     { label: 'Price per m²', value: formatPricePerM2(realEstate.pricePerM2, realEstate.currency) },
-    { label: isLand ? 'Plot area' : 'Floor area', value: formatArea(realEstate.sizeInM2) },
-    { label: isLand ? 'Plot type' : 'Layout', value: subCategoryLabel(realEstate.mainCategory, realEstate.subCategory) || '—' },
+    { label: SIZE_LABEL[realEstate.mainCategory] ?? 'Size', value: formatArea(realEstate.sizeInM2) },
+    ...(isHouse ? [{ label: 'Plot area', value: formatArea(realEstate.landSizeInM2) }] : []),
+    {
+      label: isLand ? 'Plot type' : isHouse ? 'House type' : 'Layout',
+      value: subCategoryLabel(realEstate.mainCategory, realEstate.subCategory) || '—',
+    },
     { label: 'Category', value: buildingTypeLabel(realEstate.mainCategory) },
     { label: 'Listed on', value: sources.length > 1 ? `${sources.length} portals` : realEstate.provider },
   ];

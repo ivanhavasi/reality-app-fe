@@ -20,6 +20,7 @@ const RealEstateCard: React.FC<RealEstateCardProps> = ({ estate }) => {
   const meta = [
     subLabel,
     estate.sizeInM2 ? formatArea(estate.sizeInM2) : null,
+    estate.landSizeInM2 ? `plot ${formatArea(estate.landSizeInM2)}` : null,
     isLand && estate.pricePerM2 ? formatPricePerM2(estate.pricePerM2, estate.currency) : null,
   ].filter(Boolean);
 

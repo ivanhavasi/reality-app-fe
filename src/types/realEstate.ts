@@ -25,6 +25,7 @@ export interface RealEstate {
   price: number;
   pricePerM2: number | null;
   sizeInM2: number;
+  landSizeInM2?: number | null; // houses only: the plot, sizeInM2 is the usable area
   currency: string;
   locality: Locality;
   mainCategory: BuildingType;

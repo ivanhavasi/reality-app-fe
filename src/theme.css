@@ -2013,6 +2013,70 @@ a {
   border-radius: 50%;
 }
 
+.district-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.district-row {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(3rem, 1fr) 8.5rem 6rem;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.district-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.district-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--app-surface-2);
+  overflow: hidden;
+}
+
+.district-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--app-chart-1);
+}
+
+.district-value {
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.district-count {
+  color: var(--app-text-3);
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  .district-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.25rem;
+  }
+
+  .district-bar {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .district-count {
+    display: none;
+  }
+}
+
 /* Maps */
 
 .map-container {

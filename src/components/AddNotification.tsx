@@ -8,9 +8,24 @@ import {
   WebhookNotificationCommand, 
   DiscordWebhookNotificationCommand,
 } from '../types/notifications';
-import { BUILDING_TYPE_META, BuildingType, ENABLED_BUILDING_TYPES, ENABLED_LAND_SUB_TYPES, TransactionType } from '../types/property';
+import {
+  BUILDING_TYPE_META,
+  BuildingType,
+  ENABLED_BUILDING_TYPES,
+  ENABLED_LAND_SUB_TYPES,
+  SIZE_LABEL,
+  supportedTransaction,
+  TRANSACTION_TYPES,
+  TransactionType,
+} from '../types/property';
 import { addNotification } from '../services/api';
 import { useError } from '../context/ErrorContext';
+
+const SCOPE_TEXT: Record<BuildingType, string> = {
+  APARTMENT: 'Alerts cover new listings in the Prague region.',
+  HOUSE: 'House alerts cover houses for sale in the Prague region.',
+  LAND: 'Land alerts cover building plots in the Prague region.',
+};
 
 interface AddNotificationProps {
   onSuccess: () => void;
@@ -60,10 +75,13 @@ const AddNotification: React.FC<AddNotificationProps> = ({ onSuccess, onCancel }
       };
     }
     
-    // an explicit empty list would match nothing, so subTypes is either non-empty or absent
+    // an explicit empty list would match nothing, so subTypes is either non-empty or absent;
+    // houses match any type, some portals leave it empty
     const parsedSubTypes = buildingType === 'LAND'
       ? ENABLED_LAND_SUB_TYPES
-      : subTypes.split(',').map(t => t.trim()).filter(t => t !== '');
+      : buildingType === 'HOUSE'
+        ? []
+        : subTypes.split(',').map(t => t.trim()).filter(t => t !== '');
     if (parsedSubTypes.length > 0) {
       filter.subTypes = [...parsedSubTypes];
     }
@@ -140,7 +158,10 @@ const AddNotification: React.FC<AddNotificationProps> = ({ onSuccess, onCancel }
     }
   };
 
-  const isLand = buildingType === 'LAND';
+  const handleBuildingTypeChange = (newType: BuildingType) => {
+    setBuildingType(newType);
+    setTransactionType(supportedTransaction(newType, transactionType));
+  };
 
   return (
     <>
@@ -239,7 +260,7 @@ const AddNotification: React.FC<AddNotificationProps> = ({ onSuccess, onCancel }
                 ariaLabel="Property type"
                 block
                 value={buildingType}
-                onChange={setBuildingType}
+                onChange={handleBuildingTypeChange}
                 options={ENABLED_BUILDING_TYPES.map(t => ({ value: t, label: BUILDING_TYPE_META[t].plural }))}
               />
             </Col>
@@ -250,15 +271,12 @@ const AddNotification: React.FC<AddNotificationProps> = ({ onSuccess, onCancel }
                 block
                 value={transactionType}
                 onChange={setTransactionType}
-                options={[
-                  { value: 'SALE', label: 'Buy' },
-                  { value: 'RENT', label: 'Rent' },
-                ]}
+                options={TRANSACTION_TYPES[buildingType].map(t => ({ value: t, label: t === 'SALE' ? 'Buy' : 'Rent' }))}
               />
             </Col>
 
             <Col sm={6}>
-              <Form.Label htmlFor="alert-size-from">{isLand ? 'Plot area' : 'Floor area'}</Form.Label>
+              <Form.Label htmlFor="alert-size-from">{SIZE_LABEL[buildingType]}</Form.Label>
               <InputGroup>
                 <Form.Control
                   id="alert-size-from"
@@ -306,7 +324,7 @@ const AddNotification: React.FC<AddNotificationProps> = ({ onSuccess, onCancel }
               </InputGroup>
             </Col>
 
-            {!isLand && (
+            {buildingType === 'APARTMENT' && (
               <Col xs={12}>
                 <Form.Group controlId="alert-layouts">
                   <Form.Label>Layouts</Form.Label>
@@ -323,9 +341,7 @@ const AddNotification: React.FC<AddNotificationProps> = ({ onSuccess, onCancel }
           </Row>
 
           <p className="form-text mt-4 mb-0">
-            {isLand
-              ? 'Land alerts cover building plots in the Prague region.'
-              : 'Alerts cover new listings in the Prague region.'}
+            {SCOPE_TEXT[buildingType]}
           </p>
         </Form>
       </Modal.Body>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, BarChartLine, Bell, Building, Gear, Inbox, Tree } from 'react-bootstrap-icons';
+import { ArrowRight, BarChartLine, Bell, Building, Gear, HouseDoor, Inbox, Tree } from 'react-bootstrap-icons';
 import type { Icon } from 'react-bootstrap-icons';
 import { useUser } from '../context/UserContext';
 import { PageHeader } from '../components/ui';
@@ -10,6 +10,7 @@ interface Props {
 
 const links: { to: string; title: string; text: string; icon: Icon }[] = [
   { to: '/real-estates', title: 'Apartments', text: 'For sale and rent across Prague', icon: Building },
+  { to: '/real-estates?building=HOUSE', title: 'Houses', text: 'Houses for sale in the Prague region', icon: HouseDoor },
   { to: '/real-estates?building=LAND', title: 'Building plots', text: 'Land for sale in the Prague region', icon: Tree },
   { to: '/stats', title: 'Market stats', text: 'Price per m² and supply over time', icon: BarChartLine },
   { to: '/notifications', title: 'Alerts', text: 'Get notified when new listings match', icon: Bell },

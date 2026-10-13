@@ -8,14 +8,44 @@ import StatisticsService from '../services/StatisticsService';
 import { MarketStatistics, BuildingType, TransactionType, TimePeriod, TimeGranularity } from '../types/statistics';
 import { useError } from '../context/ErrorContext';
 import DualRangeSlider from '../components/DualRangeSlider';
-import { BUILDING_TYPE_META, ENABLED_BUILDING_TYPES, ENABLED_LAND_SUB_TYPES, SIZE_RANGE } from '../types/property';
+import DistrictPrices from '../components/DistrictPrices';
+import {
+  BUILDING_TYPE_META,
+  ENABLED_BUILDING_TYPES,
+  ENABLED_LAND_SUB_TYPES,
+  HOUSE_SUB_TYPE_LABELS,
+  SIZE_LABEL,
+  SIZE_RANGE,
+  supportedTransaction,
+  TRANSACTION_TYPES,
+} from '../types/property';
 import { formatPricePerM2 } from '../utils/format';
 import { EmptyState, PageHeader, Segmented } from '../components/ui';
+
+const SUBTITLES: Record<BuildingType, string> = {
+  APARTMENT: 'Asking prices and supply over time',
+  HOUSE: 'House prices in the Prague region',
+  LAND: 'Building plot prices in the Prague region',
+};
+
+const APARTMENT_LAYOUTS: { value: string; label: string }[] = [
+  { value: '1+kk', label: '1+kk (Studio)' },
+  { value: '1+1', label: '1+1' },
+  { value: '2+kk', label: '2+kk' },
+  { value: '2+1', label: '2+1' },
+  { value: '3+kk', label: '3+kk' },
+  { value: '3+1', label: '3+1' },
+  { value: '4+kk', label: '4+kk' },
+  { value: 'atypicky', label: 'Atypical' }
+];
+
+const HOUSE_TYPES = Object.entries(HOUSE_SUB_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
 const Stats = () => {
   const { setError } = useError();
   const [loading, setLoading] = useState(false);
   const [statistics, setStatistics] = useState<MarketStatistics[]>([]);
+  const [districtStatistics, setDistrictStatistics] = useState<MarketStatistics[]>([]);
 
   // Filter states
   const [city, setCity] = useState<string>('');
@@ -32,11 +62,6 @@ const Stats = () => {
 
   const maxSize = getMaxSizeForType(buildingType);
 
-  const transactionTypes: { value: TransactionType; label: string }[] = [
-    { value: 'SALE', label: 'Sale' },
-    { value: 'RENT', label: 'Rent' }
-  ];
-
   const periods: { value: TimePeriod; label: string }[] = [
     { value: '1M', label: 'Last month' },
     { value: '3M', label: 'Last 3 months' },
@@ -51,17 +76,6 @@ const Stats = () => {
     { value: 'DAILY', label: 'Daily' },
     { value: 'WEEKLY', label: 'Weekly' },
     { value: 'MONTHLY', label: 'Monthly' }
-  ];
-
-  const subCategories: { value: string; label: string }[] = [
-    { value: '1+kk', label: '1+kk (Studio)' },
-    { value: '1+1', label: '1+1' },
-    { value: '2+kk', label: '2+kk' },
-    { value: '2+1', label: '2+1' },
-    { value: '3+kk', label: '3+kk' },
-    { value: '3+1', label: '3+1' },
-    { value: '4+kk', label: '4+kk' },
-    { value: 'atypicky', label: 'Atypical' }
   ];
 
   const fetchStatistics = async () => {
@@ -80,8 +94,12 @@ const Stats = () => {
       if (sizeMin > 0) params.sizeMin = sizeMin;
       if (sizeMax < maxSize) params.sizeMax = sizeMax;
 
-      const data = await StatisticsService.getMarketStatistics(params);
+      const [data, districtData] = await Promise.all([
+        StatisticsService.getMarketStatistics(params),
+        StatisticsService.getMarketStatistics({ ...params, granularity: 'MONTHLY', groupBy: ['DISTRICT'] }),
+      ]);
       setStatistics(data);
+      setDistrictStatistics(districtData);
     } catch (error: any) {
       setError(error.message || 'Failed to fetch statistics');
     } finally {
@@ -97,6 +115,7 @@ const Stats = () => {
   const handleBuildingTypeChange = (newType: BuildingType) => {
     if (newType === buildingType) return;
     setBuildingType(newType);
+    setTransactionType(supportedTransaction(newType, transactionType));
     setSubCategory('');
     setSizeMin(0);
     setSizeMax(getMaxSizeForType(newType));
@@ -212,13 +231,16 @@ const Stats = () => {
 
   const average = (values: number[]) => (values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : 0);
   const perM2Values = statistics.filter(s => s.avgPricePerM2).map(s => s.avgPricePerM2 || 0);
+  const landSizeValues = statistics.filter(s => s.avgLandSize).map(s => s.avgLandSize || 0);
   const isLand = buildingType === 'LAND';
+  const isHouse = buildingType === 'HOUSE';
+  const subCategoryOptions = isHouse ? HOUSE_TYPES : APARTMENT_LAYOUTS;
 
   return (
     <>
       <PageHeader
         title="Market stats"
-        subtitle={isLand ? 'Building plot prices in the Prague region' : 'Asking prices and supply over time'}
+        subtitle={SUBTITLES[buildingType]}
         actions={
           <Segmented
             ariaLabel="Property type"
@@ -253,15 +275,15 @@ const Stats = () => {
               block
               value={transactionType}
               onChange={setTransactionType}
-              options={transactionTypes.map(type => ({ value: type.value, label: type.value === 'SALE' ? 'Buy' : 'Rent' }))}
+              options={TRANSACTION_TYPES[buildingType].map(type => ({ value: type, label: type === 'SALE' ? 'Buy' : 'Rent' }))}
             />
           </Col>
           {!isLand && (
             <Col sm={6} lg={3}>
-              <Form.Label htmlFor="stats-layout">Layout</Form.Label>
+              <Form.Label htmlFor="stats-layout">{isHouse ? 'House type' : 'Layout'}</Form.Label>
               <Form.Select id="stats-layout" value={subCategory} onChange={(e) => setSubCategory(e.target.value)}>
-                <option value="">All layouts</option>
-                {subCategories.map(sub => (
+                <option value="">{isHouse ? 'All house types' : 'All layouts'}</option>
+                {subCategoryOptions.map(sub => (
                   <option key={sub.value} value={sub.value}>{sub.label}</option>
                 ))}
               </Form.Select>
@@ -269,7 +291,7 @@ const Stats = () => {
           )}
           <Col sm={6} lg={3}>
             <DualRangeSlider
-              label={isLand ? 'Plot area' : 'Floor area'}
+              label={SIZE_LABEL[buildingType]}
               minValue={sizeMin}
               maxValue={sizeMax}
               min={0}
@@ -326,7 +348,7 @@ const Stats = () => {
         <EmptyState
           icon={BarChartLine}
           title="No data for these filters"
-          text="Try a longer period, a different layout or a wider size range."
+          text={`Try a longer period${isLand ? '' : isHouse ? ', a different house type' : ', a different layout'} or a wider size range.`}
         />
       ) : (
         <>
@@ -346,12 +368,21 @@ const Stats = () => {
               </div>
             </div>
             <div className="stat-tile">
-              <div className="stat-label">Average size</div>
+              <div className="stat-label">Average {SIZE_LABEL[buildingType].toLowerCase()}</div>
               <div className="stat-value">
                 {average(statistics.map(s => s.avgSize)).toLocaleString('cs-CZ', { maximumFractionDigits: 1 })}
                 <small>m²</small>
               </div>
             </div>
+            {isHouse && landSizeValues.length > 0 && (
+              <div className="stat-tile">
+                <div className="stat-label">Average plot area</div>
+                <div className="stat-value">
+                  {Math.round(average(landSizeValues)).toLocaleString('cs-CZ')}
+                  <small>m²</small>
+                </div>
+              </div>
+            )}
             <div className="stat-tile">
               <div className="stat-label">Listings in period</div>
               <div className="stat-value">{statistics.reduce((sum, s) => sum + s.count, 0).toLocaleString('cs-CZ')}</div>
@@ -415,6 +446,8 @@ const Stats = () => {
               )}
             </div>
           </div>
+
+          <DistrictPrices rows={districtStatistics} />
         </>
       )}
     </>

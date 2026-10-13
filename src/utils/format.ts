@@ -1,4 +1,4 @@
-import { BUILDING_TYPE_META, isBuildingType, LAND_SUB_TYPE_LABELS } from '../types/property';
+import { BUILDING_TYPE_META, HOUSE_SUB_TYPE_LABELS, isBuildingType, LAND_SUB_TYPE_LABELS } from '../types/property';
 
 const cz = (v: number) => Math.round(v).toLocaleString('cs-CZ');
 
@@ -36,7 +36,13 @@ export const formatArea = (m2: number | null | undefined) =>
       : `${cz(m2)} m²`;
 
 export const subCategoryLabel = (type: string | null | undefined, sub: string | null | undefined) =>
-  !sub ? '' : type === 'LAND' ? LAND_SUB_TYPE_LABELS[sub] ?? sub : sub;
+  !sub
+    ? ''
+    : type === 'LAND'
+      ? LAND_SUB_TYPE_LABELS[sub] ?? sub
+      : type === 'HOUSE'
+        ? HOUSE_SUB_TYPE_LABELS[sub] ?? sub
+        : sub;
 
 export const buildingTypeLabel = (type: string | null | undefined) =>
   isBuildingType(type) ? BUILDING_TYPE_META[type].label : type ?? '';

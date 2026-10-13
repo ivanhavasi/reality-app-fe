@@ -12,7 +12,10 @@ import {
   OPEN_PRICE_MAX,
   OPEN_SIZE_MAX,
   PRICE_RANGE,
+  SIZE_LABEL,
   SIZE_RANGE,
+  supportedTransaction,
+  TRANSACTION_TYPES,
   TransactionType,
 } from '../types/property';
 import MultiRealEstateMap from '../components/MultiRealEstateMap';
@@ -36,6 +39,12 @@ interface SearchState {
 
 const MAP_POINT_LIMIT = 500;
 
+const TITLES: Record<BuildingType, string> = {
+  APARTMENT: 'Apartments',
+  HOUSE: 'Houses',
+  LAND: 'Building plots',
+};
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const readNumberParam = (params: URLSearchParams, name: string, fallback: number, max: number) => {
@@ -47,7 +56,7 @@ const readInitialState = (): SearchState => {
   const params = new URLSearchParams(window.location.search);
   const buildingParam = params.get('building') as BuildingType | null;
   const building = buildingParam && ENABLED_BUILDING_TYPES.includes(buildingParam) ? buildingParam : 'APARTMENT';
-  const transaction: TransactionType = params.get('transaction') === 'RENT' ? 'RENT' : 'SALE';
+  const transaction = supportedTransaction(building, params.get('transaction') === 'RENT' ? 'RENT' : 'SALE');
   const sizeRange = SIZE_RANGE[building];
   const priceRange = PRICE_RANGE[building][transaction];
   const sizeMin = readNumberParam(params, 'sizeMin', 0, sizeRange.max);
@@ -128,7 +137,6 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
   const itemsPerPage = 10;
   const sizeRange = SIZE_RANGE[building];
   const priceRange = PRICE_RANGE[building][transactionType];
-  const isLand = building === 'LAND';
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -278,10 +286,12 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
 
   const handleBuildingChange = (newBuilding: BuildingType) => {
     if (newBuilding === building) return;
+    const newTransaction = supportedTransaction(newBuilding, transactionType);
     setBuilding(newBuilding);
+    setTransactionType(newTransaction);
     applyRanges(
       { min: 0, max: SIZE_RANGE[newBuilding].max },
-      { min: 0, max: PRICE_RANGE[newBuilding][transactionType].max },
+      { min: 0, max: PRICE_RANGE[newBuilding][newTransaction].max },
     );
     setCurrentPage(1);
   };
@@ -388,7 +398,7 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
   return (
     <>
       <PageHeader
-        title={`${isLand ? 'Building plots' : 'Apartments'} for ${transactionType === 'SALE' ? 'sale' : 'rent'}`}
+        title={`${TITLES[building]} for ${transactionType === 'SALE' ? 'sale' : 'rent'}`}
         subtitle="Prague and the surrounding region, merged from every major listing portal"
       />
 
@@ -408,10 +418,7 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
             ariaLabel="Transaction"
             value={transactionType}
             onChange={handleTransactionTypeChange}
-            options={[
-              { value: 'SALE', label: 'Buy' },
-              { value: 'RENT', label: 'Rent' },
-            ]}
+            options={TRANSACTION_TYPES[building].map(type => ({ value: type, label: type === 'SALE' ? 'Buy' : 'Rent' }))}
           />
           <div className="search-field">
             <Search size={15} />
@@ -449,7 +456,7 @@ const RealEstates: React.FC<RealEstatesProps> = ({ token }) => {
             <div className="filter-panel">
               <div className="filter-grid">
                 <DualRangeSlider
-                  label={isLand ? 'Plot area' : 'Size'}
+                  label={SIZE_LABEL[building]}
                   minValue={sizeMin}
                   maxValue={sizeMax}
                   min={0}
